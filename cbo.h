@@ -16,7 +16,8 @@
 
 // Structure of the CBo code style checker
 typedef struct CBo {
-  int a;
+  // List of path to the checked files
+  GSetStr filePaths;
 } CBo;
 
 // ================ Functions declaration ====================
@@ -26,7 +27,18 @@ typedef struct CBo {
 CBo* CBoCreate(void);
 
 // Function to free the memory used by the CBo 'that'
-void CBoFree(CBo** that);
+void CBoFree(CBo** const that);
+
+// Process the arguments from the command line
+// Return true if the arguments were correct, else false
+bool CBoProcessCmdLineArguments(
+          CBo* const that,
+           const int argc,
+  const char** const argv);
+
+// Check the files
+// Return true if there was no problem, else false
+bool CBoCheckAllFiles(CBo* const that);
 
 // ================ static inliner ====================
 
