@@ -9,6 +9,7 @@
 #include <string.h>
 #include "pberr.h"
 #include "gset.h"
+#include "respublish.h"
 
 // ================= Define ==================
 
@@ -39,6 +40,12 @@ bool CBoProcessCmdLineArguments(
 // Check the files
 // Return true if there was no problem, else false
 bool CBoCheckAllFiles(CBo* const that);
+
+// Get the number of file to check
+#if BUILDMODE != 0
+inline
+#endif 
+int CBoGetNbFiles(const CBo* const that);
 
 // ================ static inliner ====================
 

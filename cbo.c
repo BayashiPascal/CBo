@@ -107,21 +107,26 @@ bool CBoCheckAllFiles(CBo* const that) {
   // Declare a variable to memorize if all the file were correct
   bool allCorrect = true;
 
-  // Loop on the files
-  GSetIterForward iterFilePath = 
-    GSetIterForwardCreateStatic(&(that->filePaths));
-  do {
+  // If there are files to check
+  if (CBoGetNbFiles(that) > 0) {
 
-    // Get the file path
-    const char* filePath = GSetIterGet(&iterFilePath);
+    // Loop on the files
+    GSetIterForward iterFilePath = 
+      GSetIterForwardCreateStatic(&(that->filePaths));
+    do {
 
-    // Check the file
-    allCorrect &= 
-      CBoCheckOneFile(
-        that,
-        filePath);
+      // Get the file path
+      const char* filePath = GSetIterGet(&iterFilePath);
 
-  } while (GSetIterStep(&iterFilePath) == true);
+      // Check the file
+      allCorrect &= 
+        CBoCheckOneFile(
+          that,
+          filePath);
+
+    } while (GSetIterStep(&iterFilePath) == true);
+
+  }
 
   // Return the flag
   return allCorrect;
