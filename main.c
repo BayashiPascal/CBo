@@ -33,6 +33,8 @@ int main(
     // Else, at least one file contained error
     } else {
 
+      printf("Still some error(s). Don't give up !\n");
+
       // Set the return code
       retCode = 1;
 
