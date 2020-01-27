@@ -20,6 +20,7 @@
 
 // Structure to memorize one line of a file
 typedef struct CBoLine {
+
   // Original line
   char* str;
 
@@ -27,6 +28,7 @@ typedef struct CBoLine {
 
 // Enum for the file type
 typedef enum CBoFileType {
+
   CBoFileType_unknown,
   CBoFileType_C_header,
   CBoFileType_C_body
@@ -38,6 +40,7 @@ extern const char* cboFileTypeStr[];
 
 // Structure to memorize the content of one file
 typedef struct CBoFile {
+
   // Pointer to the file path
   const char* filePath;
   // Type of the file
@@ -49,6 +52,7 @@ typedef struct CBoFile {
 
 // Structure of the CBo code style checker
 typedef struct CBo {
+
   // Set of path to the checked files
   GSetStr filePaths;
   // Set of loaded path
