@@ -20,7 +20,7 @@
 
 // Structure to memorize one line of a file
 typedef struct CBoLine {
-  // Original line 
+  // Original line
   char* str;
 } CBoLine;
 
@@ -75,7 +75,7 @@ bool CBoCheckAllFiles(CBo* const that);
 // Get the number of file to check
 #if BUILDMODE != 0
 inline
-#endif 
+#endif
 int CBoGetNbFiles(const CBo* const that);
 
 // Function to create a new CBoFile from its file path,

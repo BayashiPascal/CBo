@@ -5,7 +5,7 @@
 // Get the number of file to check
 #if BUILDMODE != 0
 inline
-#endif 
+#endif
 int CBoGetNbFiles(const CBo* const that) {
 #if BUILDMODE == 0
   if (that == NULL) {
@@ -13,7 +13,7 @@ int CBoGetNbFiles(const CBo* const that) {
     sprintf(CBoErr->_msg, "'that' is null");
     PBErrCatch(CBoErr);
   }
-#endif 
+#endif
   return GSetNbElem(&(that->filePaths));
 }
 

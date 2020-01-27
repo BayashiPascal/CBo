@@ -31,6 +31,13 @@ bool CBoFileCheckLineLength(
   CBoFile* const that,
   CBo* const cbo);
 
+// Check there is no trailing spaces on the lines of the CBoFile 'that'
+// with the CBo 'cbo'
+// Return true if there was no problem, else false
+bool CBoFileCheckTrailingSpace(
+  CBoFile* const that,
+  CBo* const cbo);
+
 // ================ Functions implementation ==================
 
 // Function to create a new CBo,
@@ -81,7 +88,7 @@ bool CBoProcessCmdLineArguments(
     sprintf(CBoErr->_msg, "'that' is null");
     PBErrCatch(CBoErr);
   }
-#endif 
+#endif
 
   // Loop on arguments
   for (int iArg = 1;
@@ -110,7 +117,7 @@ bool CBoProcessCmdLineArguments(
         GSetAppend(
           &(that->filePaths),
           (char*)(argv[iArg]));
-        
+
       // Else the path is incorrect
       } else {
 
@@ -120,7 +127,7 @@ bool CBoProcessCmdLineArguments(
         return false;
 
       }
-      
+
     }
 
   }
@@ -139,7 +146,7 @@ bool CBoCheckAllFiles(CBo* const that) {
     sprintf(CBoErr->_msg, "'that' is null");
     PBErrCatch(CBoErr);
   }
-#endif 
+#endif
 
   // Declare a variable to memorize if all the file were loaded
   bool allLoaded = true;
@@ -154,7 +161,7 @@ bool CBoCheckAllFiles(CBo* const that) {
     ProgBarTxt progBar = ProgBarTxtCreateStatic();
 
     // Loop on the files
-    GSetIterForward iterFilePath = 
+    GSetIterForward iterFilePath =
       GSetIterForwardCreateStatic(&(that->filePaths));
     int iFilePath = 0;
     do {
@@ -164,7 +171,7 @@ bool CBoCheckAllFiles(CBo* const that) {
         &progBar,
         (float)iFilePath / (float)CBoGetNbFiles(that));
       printf(
-        "Loading %d files... %s\r", 
+        "Loading %d files... %s\r",
         CBoGetNbFiles(that),
         ProgBarTxtGet(&progBar));
       fflush(stdout);
@@ -205,13 +212,13 @@ bool CBoCheckAllFiles(CBo* const that) {
       &progBar,
       (float)iFilePath / (float)CBoGetNbFiles(that));
     printf(
-      "Loaded %d files     %s\n", 
+      "Loaded %d files     %s\n",
       CBoGetNbFiles(that),
       ProgBarTxtGet(&progBar));
     fflush(stdout);
 
     // Loop on the loaded files
-    GSetIterForward iterFile = 
+    GSetIterForward iterFile =
       GSetIterForwardCreateStatic(&(that->files));
     do {
 
@@ -219,7 +226,7 @@ bool CBoCheckAllFiles(CBo* const that) {
       CBoFile* file = GSetIterGet(&iterFile);
 
       // Check the file
-      allCorrect &= 
+      allCorrect &=
         CBoFileCheck(
           file,
           that);
@@ -242,7 +249,7 @@ CBoFile* CBoFileCreate(const char* const filePath) {
     sprintf(CBoErr->_msg, "'filePath' is null");
     PBErrCatch(CBoErr);
   }
-#endif 
+#endif
   // Create the new CBoFile
   CBoFile* that = (CBoFile*)malloc(sizeof(CBoFile));
 
@@ -258,9 +265,9 @@ CBoFile* CBoFileCreate(const char* const filePath) {
   if (that->type != CBoFileType_unknown) {
 
     // Open the file
-    FILE* fp = 
+    FILE* fp =
       fopen(
-        filePath, 
+        filePath,
         "r");
 
     // Declare a buffer to read one line
@@ -273,7 +280,7 @@ CBoFile* CBoFileCreate(const char* const filePath) {
       // Create a pointer on the char of the line
       char* ptr = buffer;
       *ptr = '\0';
-      
+
       // Loop one the char of the line until the end of the line or
       // an error occured or we reach the end of the file or the end
       // of the buffer
@@ -283,10 +290,10 @@ CBoFile* CBoFileCreate(const char* const filePath) {
              ptr < buffer + 999) {
 
         // Read one char
-        ret = 
+        ret =
           fscanf(
-            fp, 
-            "%c", 
+            fp,
+            "%c",
             ptr);
 
         // If we could read the character and it wasn't the end
@@ -310,7 +317,7 @@ CBoFile* CBoFileCreate(const char* const filePath) {
       // Else there was no error while reading the line
       } else {
 
-        // Add the null character to the end of the string 
+        // Add the null character to the end of the string
         *ptr = '\0';
 
         // Create the CBoLine
@@ -320,7 +327,7 @@ CBoFile* CBoFileCreate(const char* const filePath) {
         if (line != NULL) {
 
           GSetAppend(
-            &(that->lines), 
+            &(that->lines),
             line);
 
         } else {
@@ -328,24 +335,24 @@ CBoFile* CBoFileCreate(const char* const filePath) {
           ret = EOF;
 
         }
-      
+
       }
-      
+
     }
 
     // If there has been an error
-    if (!feof(fp) && 
+    if (!feof(fp) &&
         ret == EOF) {
 
       CBoFileFree(&that);
 
     }
-    
+
     // Close the file
     fclose(fp);
 
   }
-  
+
   // Return the new CBoFile
   return that;
 }
@@ -359,20 +366,20 @@ CBoFileType CBoFileGetTypeFromPath(const char* const filePath) {
     sprintf(CBoErr->_msg, "'filePath' is null");
     PBErrCatch(CBoErr);
   }
-#endif 
-  
+#endif
+
   // Get the position of the last '.'
   char* ptr = strrchr(filePath, '.');
 
   // If we could find the last '.'
   if (ptr != NULL) {
-    
+
     if (strcmp(ptr, ".c") == 0) {
       return CBoFileType_C_body;
     } else if (strcmp(ptr, ".h") == 0) {
       return CBoFileType_C_header;
     }
-    
+
   }
 
   // By default return 'unknown'
@@ -390,7 +397,7 @@ void CBoFileFree(CBoFile** const that) {
     CBoLine* line = GSetPop(&((*that)->lines));
     CBoLineFree(&line);
   }
-  
+
   // Free the CBoFile
   free(*that);
   *that = NULL;
@@ -406,7 +413,7 @@ CBoLine* CBoLineCreate(const char* const str) {
     sprintf(CBoErr->_msg, "'str' is null");
     PBErrCatch(CBoErr);
   }
-#endif 
+#endif
 
   // Declare the new CBoLine
   CBoLine* that = (CBoLine*)malloc(sizeof(CBoLine));
@@ -423,7 +430,7 @@ CBoLine* CBoLineCreate(const char* const str) {
     }
 
   }
-  
+
   // Return the CBoLine
   return that;
 }
@@ -432,7 +439,7 @@ CBoLine* CBoLineCreate(const char* const str) {
 void CBoLineFree(CBoLine** const that) {
 
   if (that == NULL || *that == NULL) return;
-  
+
   // Free the line content
   free((*that)->str);
 
@@ -458,10 +465,10 @@ bool CBoFileCheck(
     sprintf(CBoErr->_msg, "'cbo' is null");
     PBErrCatch(CBoErr);
   }
-#endif 
+#endif
 
   // Display an info message
-  char* msg = 
+  char* msg =
     SGRString(
       SGR_ColorFG(125, 125, 255, "=== Check file [%s] as %s ==="));
   printf(
@@ -478,20 +485,28 @@ bool CBoFileCheck(
   // Check the rules according to the type of file
   if (that->type == CBoFileType_C_header) {
 
-    success &= 
+    success &=
       CBoFileCheckLineLength(
-        that, 
+        that,
+        cbo);
+    success &=
+      CBoFileCheckTrailingSpace(
+        that,
         cbo);
 
   } else if (that->type == CBoFileType_C_body) {
 
-    success &= 
+    success &=
       CBoFileCheckLineLength(
-        that, 
+        that,
+        cbo);
+    success &=
+      CBoFileCheckTrailingSpace(
+        that,
         cbo);
 
   }
-  
+
   // Return the successfull code
   return success;
 
@@ -513,7 +528,7 @@ bool CBoFileCheckLineLength(
     sprintf(CBoErr->_msg, "'cbo' is null");
     PBErrCatch(CBoErr);
   }
-#endif 
+#endif
 
   // Declare a variable to memorize the success
   bool success = true;
@@ -525,14 +540,14 @@ bool CBoFileCheckLineLength(
   if (GSetNbElem(&(that->lines)) > 0) {
 
     // Loop on the lines
-    GSetIterForward iter = 
+    GSetIterForward iter =
       GSetIterForwardCreateStatic(&(that->lines));
     unsigned int iLine = 0;
     do {
-      
+
       // Update and display the ProgBar
       ProgBarTxtSet(
-        &progBar, 
+        &progBar,
         (float)iLine / (float)GSetNbElem(&(that->lines)));
       printf(
         "CheckLineLength %s\r",
@@ -541,7 +556,7 @@ bool CBoFileCheckLineLength(
 
       // Get the line
       CBoLine* line = GSetIterGet(&iter);
-      
+
       // Get the length of the line
       unsigned int length = strlen(line->str);
 
@@ -552,10 +567,10 @@ bool CBoFileCheckLineLength(
         success = false;
 
         // Display an error message
-        char* errMsg = 
+        char* errMsg =
           SGRString(
             SGR_ColorFG(255, 0, 0, "%s:%d Line too long."));
-        char* errLine = 
+        char* errLine =
           SGRString(
             SGR_ColorBG(50, 50, 50, "%s"));
         printf("\n");
@@ -574,12 +589,12 @@ bool CBoFileCheckLineLength(
       }
 
       ++iLine;
-      
+
     } while (GSetIterStep(&iter));
 
     // Update and display the ProgBar
     ProgBarTxtSet(
-      &progBar, 
+      &progBar,
       1.0);
     printf(
       "CheckLineLength %s",
@@ -597,3 +612,108 @@ bool CBoFileCheckLineLength(
   // Return the successfull code
   return success;
 }
+
+// Check theere is no trailing spaces on the lines of the CBoFile 'that'
+// with the CBo 'cbo'
+// Return true if there was no problem, else false
+bool CBoFileCheckTrailingSpace(
+  CBoFile* const that,
+  CBo* const cbo) {
+#if BUILDMODE == 0
+  if (that == NULL) {
+    CBoErr->_type = PBErrTypeNullPointer;
+    sprintf(CBoErr->_msg, "'that' is null");
+    PBErrCatch(CBoErr);
+  }
+  if (cbo == NULL) {
+    CBoErr->_type = PBErrTypeNullPointer;
+    sprintf(CBoErr->_msg, "'cbo' is null");
+    PBErrCatch(CBoErr);
+  }
+#endif
+
+  // Declare a variable to memorize the success
+  bool success = true;
+
+  // Create a progress bar
+  ProgBarTxt progBar = ProgBarTxtCreateStatic();
+
+  // If the file is not empty
+  if (GSetNbElem(&(that->lines)) > 0) {
+
+    // Loop on the lines
+    GSetIterForward iter =
+      GSetIterForwardCreateStatic(&(that->lines));
+    unsigned int iLine = 0;
+    do {
+
+      // Update and display the ProgBar
+      ProgBarTxtSet(
+        &progBar,
+        (float)iLine / (float)GSetNbElem(&(that->lines)));
+      printf(
+        "CheckTrailingSpace %s\r",
+        ProgBarTxtGet(&progBar));
+      fflush(stdout);
+
+      // Get the line
+      CBoLine* line = GSetIterGet(&iter);
+
+      // Get the length of the line
+      unsigned int length = strlen(line->str);
+
+      // If the last char of the line is a space or a tab
+      if (length > 0 &&
+          (line->str[length - 1] == ' ' ||
+           line->str[length - 1] == '\t')) {
+
+        // Update the success flag
+        success = false;
+
+        // Display an error message
+        char* errMsg =
+          SGRString(
+            SGR_ColorFG(255, 0, 0, "%s:%d Trailing space(s) or tab(s)."));
+        char* errLine =
+          SGRString(
+            SGR_ColorBG(50, 50, 50, "%s"));
+        printf("\n");
+        printf(
+          errMsg,
+          that->filePath,
+          iLine + 1);
+        printf("\n");
+        printf(
+          errLine,
+          line->str);
+        printf("\n");
+        free(errMsg);
+        free(errLine);
+        fflush(stdout);
+      }
+
+      ++iLine;
+
+    } while (GSetIterStep(&iter));
+
+    // Update and display the ProgBar
+    ProgBarTxtSet(
+      &progBar,
+      1.0);
+    printf(
+      "CheckTrailingSpace %s",
+      ProgBarTxtGet(&progBar));
+    if (success == true) {
+
+      printf(" OK");
+
+    }
+    printf("\n");
+    fflush(stdout);
+
+  }
+
+  // Return the successfull code
+  return success;
+}
+

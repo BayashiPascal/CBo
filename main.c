@@ -3,7 +3,7 @@
 #include "cbo.h"
 
 int main(
-  int argc, 
+  int argc,
   const char** const argv) {
 
   // Declare a variable to memorize the returned code
@@ -13,10 +13,10 @@ int main(
   CBo* cbo = CBoCreate();
 
   // Process the arguments from the command line
-  bool success = 
+  bool success =
     CBoProcessCmdLineArguments(
-      cbo, 
-      argc, 
+      cbo,
+      argc,
       argv);
 
   // If we could process the command line arguments
@@ -27,9 +27,9 @@ int main(
 
     // If all the files were correct
     if (success == true) {
-      
+
       printf("All files were checked successfully. Nice job guy !\n");
-      
+
     // Else, at least one file contained error
     } else {
 
