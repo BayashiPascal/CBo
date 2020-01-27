@@ -11,6 +11,7 @@ const char* cboFileTypeStr[] = {
   "unknown",
   "C header",
   "C body"
+
 };
 
 // ================ Functions declaration ==================
@@ -37,6 +38,17 @@ bool CBoFileCheckLineLength(
 bool CBoFileCheckTrailingSpace(
   CBoFile* const that,
   CBo* const cbo);
+
+// Check there is an empty line before closing curly braces of the
+// CBoFile 'that' with the CBo 'cbo'
+// Return true if there was no problem, else false
+bool CBoFileCheckEmptyLineBeforeClosingCurlyBrace(
+  CBoFile* const that,
+  CBo* const cbo);
+
+// Return the position of the first character different of space or tab
+// or 0 if the line is empty
+unsigned int CBoGetPosHead(const char* str);
 
 // ================ Functions implementation ==================
 
@@ -66,6 +78,7 @@ void CBoFree(CBo** const that) {
   while (GSetNbElem(&((*that)->files)) > 0) {
     CBoFile* file = GSetPop(&((*that)->files));
     CBoFileFree(&file);
+
   }
 
   // Free the memory
@@ -87,6 +100,7 @@ bool CBoProcessCmdLineArguments(
     CBoErr->_type = PBErrTypeNullPointer;
     sprintf(CBoErr->_msg, "'that' is null");
     PBErrCatch(CBoErr);
+
   }
 #endif
 
@@ -145,6 +159,7 @@ bool CBoCheckAllFiles(CBo* const that) {
     CBoErr->_type = PBErrTypeNullPointer;
     sprintf(CBoErr->_msg, "'that' is null");
     PBErrCatch(CBoErr);
+
   }
 #endif
 
@@ -248,6 +263,7 @@ CBoFile* CBoFileCreate(const char* const filePath) {
     CBoErr->_type = PBErrTypeNullPointer;
     sprintf(CBoErr->_msg, "'filePath' is null");
     PBErrCatch(CBoErr);
+
   }
 #endif
   // Create the new CBoFile
@@ -355,6 +371,7 @@ CBoFile* CBoFileCreate(const char* const filePath) {
 
   // Return the new CBoFile
   return that;
+
 }
 
 // Function to detect the type of a file from its path
@@ -365,6 +382,7 @@ CBoFileType CBoFileGetTypeFromPath(const char* const filePath) {
     CBoErr->_type = PBErrTypeNullPointer;
     sprintf(CBoErr->_msg, "'filePath' is null");
     PBErrCatch(CBoErr);
+
   }
 #endif
 
@@ -376,8 +394,10 @@ CBoFileType CBoFileGetTypeFromPath(const char* const filePath) {
 
     if (strcmp(ptr, ".c") == 0) {
       return CBoFileType_C_body;
+
     } else if (strcmp(ptr, ".h") == 0) {
       return CBoFileType_C_header;
+
     }
 
   }
@@ -396,6 +416,7 @@ void CBoFileFree(CBoFile** const that) {
   while (GSetNbElem(&((*that)->lines)) > 0) {
     CBoLine* line = GSetPop(&((*that)->lines));
     CBoLineFree(&line);
+
   }
 
   // Free the CBoFile
@@ -412,6 +433,7 @@ CBoLine* CBoLineCreate(const char* const str) {
     CBoErr->_type = PBErrTypeNullPointer;
     sprintf(CBoErr->_msg, "'str' is null");
     PBErrCatch(CBoErr);
+
   }
 #endif
 
@@ -427,12 +449,14 @@ CBoLine* CBoLineCreate(const char* const str) {
     if (that->str == NULL) {
       free(that);
       that = NULL;
+
     }
 
   }
 
   // Return the CBoLine
   return that;
+
 }
 
 // Function to free the memory used by the CBoLine 'that'
@@ -459,11 +483,13 @@ bool CBoFileCheck(
     CBoErr->_type = PBErrTypeNullPointer;
     sprintf(CBoErr->_msg, "'that' is null");
     PBErrCatch(CBoErr);
+
   }
   if (cbo == NULL) {
     CBoErr->_type = PBErrTypeNullPointer;
     sprintf(CBoErr->_msg, "'cbo' is null");
     PBErrCatch(CBoErr);
+
   }
 #endif
 
@@ -493,6 +519,10 @@ bool CBoFileCheck(
       CBoFileCheckTrailingSpace(
         that,
         cbo);
+    success &=
+      CBoFileCheckEmptyLineBeforeClosingCurlyBrace(
+        that,
+        cbo);
 
   } else if (that->type == CBoFileType_C_body) {
 
@@ -502,6 +532,10 @@ bool CBoFileCheck(
         cbo);
     success &=
       CBoFileCheckTrailingSpace(
+        that,
+        cbo);
+    success &=
+      CBoFileCheckEmptyLineBeforeClosingCurlyBrace(
         that,
         cbo);
 
@@ -522,11 +556,13 @@ bool CBoFileCheckLineLength(
     CBoErr->_type = PBErrTypeNullPointer;
     sprintf(CBoErr->_msg, "'that' is null");
     PBErrCatch(CBoErr);
+
   }
   if (cbo == NULL) {
     CBoErr->_type = PBErrTypeNullPointer;
     sprintf(CBoErr->_msg, "'cbo' is null");
     PBErrCatch(CBoErr);
+
   }
 #endif
 
@@ -586,6 +622,7 @@ bool CBoFileCheckLineLength(
         free(errMsg);
         free(errLine);
         fflush(stdout);
+
       }
 
       ++iLine;
@@ -611,6 +648,7 @@ bool CBoFileCheckLineLength(
 
   // Return the successfull code
   return success;
+
 }
 
 // Check theere is no trailing spaces on the lines of the CBoFile 'that'
@@ -624,11 +662,13 @@ bool CBoFileCheckTrailingSpace(
     CBoErr->_type = PBErrTypeNullPointer;
     sprintf(CBoErr->_msg, "'that' is null");
     PBErrCatch(CBoErr);
+
   }
   if (cbo == NULL) {
     CBoErr->_type = PBErrTypeNullPointer;
     sprintf(CBoErr->_msg, "'cbo' is null");
     PBErrCatch(CBoErr);
+
   }
 #endif
 
@@ -690,6 +730,7 @@ bool CBoFileCheckTrailingSpace(
         free(errMsg);
         free(errLine);
         fflush(stdout);
+
       }
 
       ++iLine;
@@ -715,5 +756,162 @@ bool CBoFileCheckTrailingSpace(
 
   // Return the successfull code
   return success;
+
 }
 
+// Check there is an empty line before closing curly braces of the
+// CBoFile 'that' with the CBo 'cbo'
+// Return true if there was no problem, else false
+bool CBoFileCheckEmptyLineBeforeClosingCurlyBrace(
+  CBoFile* const that,
+  CBo* const cbo) {
+#if BUILDMODE == 0
+  if (that == NULL) {
+    CBoErr->_type = PBErrTypeNullPointer;
+    sprintf(CBoErr->_msg, "'that' is null");
+    PBErrCatch(CBoErr);
+
+  }
+  if (cbo == NULL) {
+    CBoErr->_type = PBErrTypeNullPointer;
+    sprintf(CBoErr->_msg, "'cbo' is null");
+    PBErrCatch(CBoErr);
+
+  }
+#endif
+
+  // Declare a variable to memorize the success
+  bool success = true;
+
+  // Create a progress bar
+  ProgBarTxt progBar = ProgBarTxtCreateStatic();
+
+  // If the file is not empty
+  if (GSetNbElem(&(that->lines)) > 1) {
+
+    // Variable to memorize the previous line
+    CBoLine* prevLine = NULL;
+
+    // Declare an iterator on the lines
+    GSetIterForward iter =
+      GSetIterForwardCreateStatic(&(that->lines));
+
+    // Skip the first line
+    prevLine = GSetIterGet(&iter);
+
+    // Loop on the lines
+    unsigned int iLine = 0;
+    do {
+
+      // Update and display the ProgBar
+      ProgBarTxtSet(
+        &progBar,
+        (float)iLine / (float)GSetNbElem(&(that->lines)));
+      printf(
+        "CheckEmptyLineBeforeClosingCurlyBrace %s\r",
+        ProgBarTxtGet(&progBar));
+      fflush(stdout);
+
+      // Get the line
+      CBoLine* line = GSetIterGet(&iter);
+
+      // Get the length of the line and previous line
+      unsigned int length = strlen(line->str);
+      unsigned int prevLength = strlen(prevLine->str);
+
+      // Get the position of the head of line and previous line
+      unsigned int posHead = CBoGetPosHead(line->str);
+      unsigned int prevPosHead = CBoGetPosHead(prevLine->str);
+
+      // If the line is a closing curly brace and the previous line
+      // is not empty or a comment
+      if (length > 0 &&
+          (line->str[length - 1] == '}' ||
+           line->str[posHead] == '}') &&
+          prevLength != 0 &&
+          prevLine->str[prevPosHead] != '/') {
+
+        // Update the success flag
+        success = false;
+
+        // Display an error message
+        char* errMsg =
+          SGRString(
+            SGR_ColorFG(255, 0, 0,
+              "%s:%d Missing empty line before closing curly brace."));
+        char* errLine =
+          SGRString(
+            SGR_ColorBG(50, 50, 50, "%s\n%s"));
+        printf("\n");
+        printf(
+          errMsg,
+          that->filePath,
+          iLine + 1);
+        printf("\n");
+        printf(
+          errLine,
+          prevLine->str,
+          line->str);
+        printf("\n");
+        free(errMsg);
+        free(errLine);
+        fflush(stdout);
+
+      }
+
+      prevLine = line;
+      ++iLine;
+
+    } while (GSetIterStep(&iter));
+
+    // Update and display the ProgBar
+    ProgBarTxtSet(
+      &progBar,
+      1.0);
+    printf(
+      "CheckEmptyLineBeforeClosingCurlyBrace %s",
+      ProgBarTxtGet(&progBar));
+    if (success == true) {
+
+      printf(" OK");
+
+    }
+    printf("\n");
+    fflush(stdout);
+
+  }
+
+  // Return the successfull code
+  return success;
+
+}
+
+// Return the position of the first character different of space or tab
+// or 0 if the line is empty
+unsigned int CBoGetPosHead(const char* str) {
+#if BUILDMODE == 0
+  if (str == NULL) {
+    CBoErr->_type = PBErrTypeNullPointer;
+    sprintf(CBoErr->_msg, "'str' is null");
+    PBErrCatch(CBoErr);
+
+  }
+#endif
+
+  // Declare a variable to memorize the position of the head
+  unsigned int posHead = 0;
+
+  // Loop until the end of the line or a charcter different of space
+  // or tab
+  while (str[posHead] != '\0' &&
+         (str[posHead] == ' ' ||
+          str[posHead] == '\t')) {
+
+    ++posHead;
+
+  }
+
+  // Return the position of the head
+  return posHead;
+
+}

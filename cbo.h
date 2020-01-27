@@ -22,6 +22,7 @@
 typedef struct CBoLine {
   // Original line
   char* str;
+
 } CBoLine;
 
 // Enum for the file type
@@ -29,6 +30,7 @@ typedef enum CBoFileType {
   CBoFileType_unknown,
   CBoFileType_C_header,
   CBoFileType_C_body
+
 } CBoFileType;
 
 // Label for the file types
@@ -42,6 +44,7 @@ typedef struct CBoFile {
   CBoFileType type;
   // Set of lines
   GSet lines;
+
 } CBoFile;
 
 // Structure of the CBo code style checker
@@ -50,6 +53,7 @@ typedef struct CBo {
   GSetStr filePaths;
   // Set of loaded path
   GSet files;
+
 } CBo;
 
 // ================ Functions declaration ====================

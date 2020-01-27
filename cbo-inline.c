@@ -12,8 +12,10 @@ int CBoGetNbFiles(const CBo* const that) {
     CBoErr->_type = PBErrTypeNullPointer;
     sprintf(CBoErr->_msg, "'that' is null");
     PBErrCatch(CBoErr);
+
   }
 #endif
   return GSetNbElem(&(that->filePaths));
+
 }
 
