@@ -16,6 +16,7 @@ int CBoGetNbFiles(const CBo* const that) {
     PBErrCatch(CBoErr);
 
   }
+
 #endif
   return GSetNbElem(&(that->filePaths));
 
