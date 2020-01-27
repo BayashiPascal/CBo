@@ -14,7 +14,7 @@
 
 // ================= Define ==================
 
-#define CBOLINE_MAX_LENGTH 72
+#define CBOLINE_MAX_LENGTH 79
 
 // ================= Data structures ===================
 
