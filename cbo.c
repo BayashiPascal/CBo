@@ -61,6 +61,13 @@ bool CBoFileCheckEmptyLineAfterClosingCurlyBrace(
   CBoFile* const that,
   CBo* const cbo);
 
+// Check there is no several blank lines in the
+// CBoFile 'that' with the CBo 'cbo'
+// Return true if there was no problem, else false
+bool CBoFileCheckSeveralBlankLines(
+  CBoFile* const that,
+  CBo* const cbo);
+
 // Check there is a space after a comma and no before in lines of the
 // CBoFile 'that' with the CBo 'cbo'
 // Return true if there was no problem, else false
@@ -592,6 +599,10 @@ bool CBoFileCheck(
         cbo);
     success &=
       CBoFileCheckSpaceAroundSemicolon(
+        that,
+        cbo);
+    success &=
+      CBoFileCheckSeveralBlankLines(
         that,
         cbo);
 
@@ -1197,6 +1208,132 @@ bool CBoFileCheckEmptyLineAfterClosingCurlyBrace(
       1.0);
     printf(
       "CheckEmptyLineAfterClosingCurlyBrace %s",
+      ProgBarTxtGet(&progBar));
+    if (success == true) {
+
+      printf(" OK");
+
+    }
+
+    printf("\n");
+    fflush(stdout);
+
+  }
+
+  // Return the successfull code
+  return success;
+
+}
+
+// Check there is no several blank lines in the
+// CBoFile 'that' with the CBo 'cbo'
+// Return true if there was no problem, else false
+bool CBoFileCheckSeveralBlankLines(
+  CBoFile* const that,
+  CBo* const cbo) {
+
+#if BUILDMODE == 0
+  if (that == NULL) {
+
+    CBoErr->_type = PBErrTypeNullPointer;
+    sprintf(CBoErr->_msg, "'that' is null");
+    PBErrCatch(CBoErr);
+
+  }
+
+  if (cbo == NULL) {
+
+    CBoErr->_type = PBErrTypeNullPointer;
+    sprintf(CBoErr->_msg, "'cbo' is null");
+    PBErrCatch(CBoErr);
+
+  }
+
+#endif
+
+  // Declare a variable to memorize the success
+  bool success = true;
+
+  // Create a progress bar
+  ProgBarTxt progBar = ProgBarTxtCreateStatic();
+
+  // If the file is not empty
+  if (GSetNbElem(&(that->lines)) > 1) {
+
+    // Variable to memorize the previous line
+    CBoLine* prevLine = NULL;
+
+    // Declare an iterator on the lines
+    GSetIterForward iter =
+      GSetIterForwardCreateStatic(&(that->lines));
+
+    // Skip the first line
+    prevLine = GSetIterGet(&iter);
+
+    // Loop on the lines
+    unsigned int iLine = 0;
+    do {
+
+      // Update and display the ProgBar
+      ProgBarTxtSet(
+        &progBar,
+        (float)iLine / (float)GSetNbElem(&(that->lines)));
+      printf(
+        "CheckSeveralBlankLine %s\r",
+        ProgBarTxtGet(&progBar));
+      fflush(stdout);
+
+      // Get the line
+      CBoLine* line = GSetIterGet(&iter);
+
+      // Get the length of the line and previous line
+      unsigned int length = strlen(line->str);
+      unsigned int prevLength = strlen(prevLine->str);
+
+      // If the line is a closing curly brace and the previous line
+      // is not empty or a comment
+      if (prevLength == 0 &&
+          length == 0) {
+
+        // Update the success flag
+        success = false;
+
+        // Display an error message
+        char* errMsg =
+          SGRString(
+            SGR_ColorFG(255, 0, 0,
+              "%s:%d Several blank lines."));
+        char* errLine =
+          SGRString(
+            SGR_ColorBG(50, 50, 50, "%s\n%s"));
+        printf("\n");
+        printf(
+          errMsg,
+          that->filePath,
+          iLine + 1);
+        printf("\n");
+        printf(
+          errLine,
+          prevLine->str,
+          line->str);
+        printf("\n");
+        free(errMsg);
+        free(errLine);
+        fflush(stdout);
+
+      }
+
+      prevLine = line;
+      ++iLine;
+
+    } while (GSetIterStep(&iter));
+
+    // Update and display the ProgBar
+    ProgBarTxtSet(
+      &progBar,
+      1.0);
+    printf(
+      "CheckSeveralBlankLine %s",
       ProgBarTxtGet(&progBar));
     if (success == true) {
 

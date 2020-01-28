@@ -21,4 +21,3 @@ int CBoGetNbFiles(const CBo* const that) {
   return GSetNbElem(&(that->filePaths));
 
 }
-
