@@ -61,6 +61,13 @@ bool CBoFileCheckEmptyLineAfterClosingCurlyBrace(
   CBoFile* const that,
   CBo* const cbo);
 
+// Check there is a space after a comma and no before in lines of the
+// CBoFile 'that' with the CBo 'cbo'
+// Return true if there was no problem, else false
+bool CBoFileCheckSpaceAroundComma(
+  CBoFile* const that,
+  CBo* const cbo);
+
 // Return the position of the first character different of space or tab
 // or 0 if the line is empty
 unsigned int CBoGetPosHead(const char* str);
@@ -549,7 +556,8 @@ bool CBoFileCheck(
   bool success = true;
 
   // Check the rules according to the type of file
-  if (that->type == CBoFileType_C_header) {
+  if (that->type == CBoFileType_C_header ||
+      that->type == CBoFileType_C_body) {
 
     success &=
       CBoFileCheckLineLength(
@@ -571,27 +579,8 @@ bool CBoFileCheck(
       CBoFileCheckEmptyLineAfterClosingCurlyBrace(
         that,
         cbo);
-
-  } else if (that->type == CBoFileType_C_body) {
-
     success &=
-      CBoFileCheckLineLength(
-        that,
-        cbo);
-    success &=
-      CBoFileCheckTrailingSpace(
-        that,
-        cbo);
-    success &=
-      CBoFileCheckEmptyLineBeforeClosingCurlyBrace(
-        that,
-        cbo);
-    success &=
-      CBoFileCheckEmptyLineAfterOpeningCurlyBrace(
-        that,
-        cbo);
-    success &=
-      CBoFileCheckEmptyLineAfterClosingCurlyBrace(
+      CBoFileCheckSpaceAroundComma(
         that,
         cbo);
 
@@ -1213,6 +1202,194 @@ bool CBoFileCheckEmptyLineAfterClosingCurlyBrace(
   return success;
 
 }
+
+// Check there is a space after a comma and no before in lines of the
+// CBoFile 'that' with the CBo 'cbo'
+// Return true if there was no problem, else false
+bool CBoFileCheckSpaceAroundComma(
+  CBoFile* const that,
+  CBo* const cbo) {
+
+#if BUILDMODE == 0
+  if (that == NULL) {
+
+    CBoErr->_type = PBErrTypeNullPointer;
+    sprintf(CBoErr->_msg, "'that' is null");
+    PBErrCatch(CBoErr);
+
+  }
+
+  if (cbo == NULL) {
+
+    CBoErr->_type = PBErrTypeNullPointer;
+    sprintf(CBoErr->_msg, "'cbo' is null");
+    PBErrCatch(CBoErr);
+
+  }
+
+#endif
+
+  // Declare a variable to memorize the success
+  bool success = true;
+
+  // Create a progress bar
+  ProgBarTxt progBar = ProgBarTxtCreateStatic();
+
+  // If the file is not empty
+  if (GSetNbElem(&(that->lines)) > 1) {
+
+    // Declare an iterator on the lines
+    GSetIterForward iter =
+      GSetIterForwardCreateStatic(&(that->lines));
+
+    // Loop on the lines
+    unsigned int iLine = 0;
+    do {
+
+      // Update and display the ProgBar
+      ProgBarTxtSet(
+        &progBar,
+        (float)iLine / (float)GSetNbElem(&(that->lines)));
+      printf(
+        "CheckSpaceAroundComma %s\r",
+        ProgBarTxtGet(&progBar));
+      fflush(stdout);
+
+      // Get the line
+      CBoLine* line = GSetIterGet(&iter);
+
+      // Get the length of the line
+      unsigned int length = strlen(line->str);
+
+      // Declare two flags to memorize the strings in the code
+      bool flagQuote = false;
+      bool flagDoubleQuote = false;
+
+      // Loop on the char of the line
+      for (unsigned int iChar = 0;
+           iChar < length;
+           ++iChar) {
+
+        if (line->str[iChar] == '\'') {
+
+          if (flagDoubleQuote == false) {
+
+            flagQuote = !flagQuote;
+
+          }
+
+        } else if (line->str[iChar] == '"') {
+
+          if (flagQuote == false) {
+
+            flagDoubleQuote = !flagDoubleQuote;
+
+          }
+
+        }
+
+        // If the char is a comma and the previous one is a space
+        if (flagQuote == false &&
+            flagDoubleQuote == false &&
+            line->str[iChar] == ',' &&
+            (iChar == 0 ||
+             line->str[iChar - 1] == ' ' ||
+             line->str[iChar - 1] == '\t')) {
+
+          // Update the success flag
+          success = false;
+
+          // Display an error message
+          char* errMsg =
+            SGRString(
+              SGR_ColorFG(255, 0, 0,
+                "%s:%d Space before comma."));
+          char* errLine =
+            SGRString(
+              SGR_ColorBG(50, 50, 50, "%s"));
+          printf("\n");
+          printf(
+            errMsg,
+            that->filePath,
+            iLine + 1);
+          printf("\n");
+          printf(
+            errLine,
+            line->str);
+          printf("\n");
+          free(errMsg);
+          free(errLine);
+          fflush(stdout);
+
+          // Skip the end of the line
+          iChar = length;
+
+        // If the char is a comma and the next one is a space
+        } else if (flagQuote == false &&
+                   flagDoubleQuote == false &&
+                   line->str[iChar] == ',' &&
+                   line->str[iChar + 1] != ' ' &&
+                   iChar != length - 1) {
+
+          // Update the success flag
+          success = false;
+
+          // Display an error message
+          char* errMsg =
+            SGRString(
+              SGR_ColorFG(255, 0, 0,
+                "%s:%d No space after comma."));
+          char* errLine =
+            SGRString(
+              SGR_ColorBG(50, 50, 50, "%s"));
+          printf("\n");
+          printf(
+            errMsg,
+            that->filePath,
+            iLine + 1);
+          printf("\n");
+          printf(
+            errLine,
+            line->str);
+          printf("\n");
+          free(errMsg);
+          free(errLine);
+          fflush(stdout);
+
+          // Skip the end of the line
+          iChar = length;
+
+        }
+
+      }
+
+      ++iLine;
+
+    } while (GSetIterStep(&iter));
+
+    // Update and display the ProgBar
+    ProgBarTxtSet(
+      &progBar,
+      1.0);
+    printf(
+      "CheckSpaceAroundComma %s",
+      ProgBarTxtGet(&progBar));
+    if (success == true) {
+
+      printf(" OK");
+
+    }
+
+    printf("\n");
+    fflush(stdout);
+
+  }
+
+  // Return the successfull code
+  return success;
+
+}
+
 
 // Return the position of the first character different of space or tab
 // or 0 if the line is empty
