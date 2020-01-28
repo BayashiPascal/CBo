@@ -925,7 +925,7 @@ bool CBoFileCheckEmptyLineBeforeClosingCurlyBrace(
               "%s:%d Missing empty line before closing curly brace."));
         char* errLine =
           SGRString(
-            SGR_ColorBG(50, 50, 50, "%s\n%s"));
+            SGR_ColorBG(50, 50, 50, "%s"));
         printf("\n");
         printf(
           errMsg,
@@ -934,7 +934,10 @@ bool CBoFileCheckEmptyLineBeforeClosingCurlyBrace(
         printf("\n");
         printf(
           errLine,
-          prevLine->str,
+          prevLine->str);
+        printf("\n");
+        printf(
+          errLine,
           line->str);
         printf("\n");
         free(errMsg);
@@ -1052,7 +1055,7 @@ bool CBoFileCheckEmptyLineAfterOpeningCurlyBrace(
               "%s:%d Missing empty line after opening curly brace."));
         char* errLine =
           SGRString(
-            SGR_ColorBG(50, 50, 50, "%s\n%s"));
+            SGR_ColorBG(50, 50, 50, "%s"));
         printf("\n");
         printf(
           errMsg,
@@ -1061,7 +1064,10 @@ bool CBoFileCheckEmptyLineAfterOpeningCurlyBrace(
         printf("\n");
         printf(
           errLine,
-          prevLine->str,
+          prevLine->str);
+        printf("\n");
+        printf(
+          errLine,
           line->str);
         printf("\n");
         free(errMsg);
@@ -1179,7 +1185,7 @@ bool CBoFileCheckEmptyLineAfterClosingCurlyBrace(
               "%s:%d Missing empty line after closing curly brace."));
         char* errLine =
           SGRString(
-            SGR_ColorBG(50, 50, 50, "%s\n%s"));
+            SGR_ColorBG(50, 50, 50, "%s"));
         printf("\n");
         printf(
           errMsg,
@@ -1188,7 +1194,10 @@ bool CBoFileCheckEmptyLineAfterClosingCurlyBrace(
         printf("\n");
         printf(
           errLine,
-          prevLine->str,
+          prevLine->str);
+        printf("\n");
+        printf(
+          errLine,
           line->str);
         printf("\n");
         free(errMsg);
@@ -1303,22 +1312,13 @@ bool CBoFileCheckSeveralBlankLines(
           SGRString(
             SGR_ColorFG(255, 0, 0,
               "%s:%d Several blank lines."));
-        char* errLine =
-          SGRString(
-            SGR_ColorBG(50, 50, 50, "%s\n%s"));
         printf("\n");
         printf(
           errMsg,
           that->filePath,
           iLine + 1);
         printf("\n");
-        printf(
-          errLine,
-          prevLine->str,
-          line->str);
-        printf("\n");
         free(errMsg);
-        free(errLine);
         fflush(stdout);
 
       }
