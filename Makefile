@@ -32,3 +32,5 @@ valgrind_test :
 	valgrind -v --track-origins=yes --leak-check=full \
 	--gen-suppressions=yes --show-leak-kinds=all ./main *
 
+install:
+	cp main ~/Tools/cbo

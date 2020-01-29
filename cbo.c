@@ -1956,7 +1956,7 @@ unsigned int CBoLineGetPosCloseCharFrom(
 #endif
 
   // Declare a variable to memorize the current position in the line
-  unsigned int pos = from + 1;
+  unsigned int pos = from;
 
   // Declare a variable to memorize the block level
   unsigned int lvl = 0;
