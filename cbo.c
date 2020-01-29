@@ -82,9 +82,16 @@ bool CBoFileCheckSpaceAroundSemicolon(
   CBoFile* const that,
   CBo* const cbo);
 
+// Function to check if a line is a comment
+// Return true if it's a comment, else false
+bool CBoLineIsComment(const CBoLine* that);
+
 // Return the position of the first character different of space or tab
 // or 0 if the line is empty
-unsigned int CBoGetPosHead(const char* str);
+unsigned int CBoLineGetPosHead(const CBoLine* that);
+
+// Function to get the length of a line
+unsigned int CBoLineGetLength(const CBoLine* that);
 
 // ================ Functions implementation ==================
 
@@ -666,7 +673,7 @@ bool CBoFileCheckLineLength(
       CBoLine* line = GSetIterGet(&iter);
 
       // Get the length of the line
-      unsigned int length = strlen(line->str);
+      unsigned int length = CBoLineGetLength(line);
 
       // If the length is too long
       if (length > CBOLINE_MAX_LENGTH) {
@@ -778,7 +785,7 @@ bool CBoFileCheckTrailingSpace(
       CBoLine* line = GSetIterGet(&iter);
 
       // Get the length of the line
-      unsigned int length = strlen(line->str);
+      unsigned int length = CBoLineGetLength(line);
 
       // If the last char of the line is a space or a tab
       if (length > 0 &&
@@ -873,15 +880,12 @@ bool CBoFileCheckEmptyLineBeforeClosingCurlyBrace(
   // If the file is not empty
   if (GSetNbElem(&(that->lines)) > 1) {
 
-    // Variable to memorize the previous line
+    // Variable to memorize the previous non comment line
     CBoLine* prevLine = NULL;
 
     // Declare an iterator on the lines
     GSetIterForward iter =
       GSetIterForwardCreateStatic(&(that->lines));
-
-    // Skip the first line
-    prevLine = GSetIterGet(&iter);
 
     // Loop on the lines
     unsigned int iLine = 0;
@@ -899,21 +903,19 @@ bool CBoFileCheckEmptyLineBeforeClosingCurlyBrace(
       // Get the line
       CBoLine* line = GSetIterGet(&iter);
 
-      // Get the length of the line and previous line
-      unsigned int length = strlen(line->str);
-      unsigned int prevLength = strlen(prevLine->str);
+      // Get the length of the line
+      unsigned int length = CBoLineGetLength(line);
 
       // Get the position of the head of line and previous line
-      unsigned int posHead = CBoGetPosHead(line->str);
-      unsigned int prevPosHead = CBoGetPosHead(prevLine->str);
+      unsigned int posHead = CBoLineGetPosHead(line);
 
-      // If the line is a closing curly brace and the previous line
-      // is not empty or a comment
+      // If the line is not empty and starts with a closing curly
+      // brace and the previous line is not empty and not a comment
       if (length > 0 &&
-          (line->str[length - 1] == '}' ||
-           line->str[posHead] == '}') &&
-          prevLength != 0 &&
-          prevLine->str[prevPosHead] != '/') {
+          prevLine != NULL &&
+          CBoLineGetLength(prevLine) != 0 &&
+          CBoLineIsComment(prevLine) == false &&
+          line->str[posHead] == '}') {
 
         // Update the success flag
         success = false;
@@ -946,7 +948,14 @@ bool CBoFileCheckEmptyLineBeforeClosingCurlyBrace(
 
       }
 
-      prevLine = line;
+      // If the line is not a comment
+      if (CBoLineIsComment(line) == false) {
+
+        // Update the previous line
+        prevLine = line;
+
+      }
+
       ++iLine;
 
     } while (GSetIterStep(&iter));
@@ -1036,8 +1045,8 @@ bool CBoFileCheckEmptyLineAfterOpeningCurlyBrace(
       CBoLine* line = GSetIterGet(&iter);
 
       // Get the length of the line and previous line
-      unsigned int length = strlen(line->str);
-      unsigned int prevLength = strlen(prevLine->str);
+      unsigned int length = CBoLineGetLength(line);
+      unsigned int prevLength = CBoLineGetLength(prevLine);
 
       // If the line is a closing curly brace and the previous line
       // is not empty or a comment
@@ -1166,8 +1175,8 @@ bool CBoFileCheckEmptyLineAfterClosingCurlyBrace(
       CBoLine* line = GSetIterGet(&iter);
 
       // Get the length of the line and previous line
-      unsigned int length = strlen(line->str);
-      unsigned int prevLength = strlen(prevLine->str);
+      unsigned int length = CBoLineGetLength(line);
+      unsigned int prevLength = CBoLineGetLength(prevLine);
 
       // If the line is a closing curly brace and the previous line
       // is not empty or a comment
@@ -1296,8 +1305,8 @@ bool CBoFileCheckSeveralBlankLines(
       CBoLine* line = GSetIterGet(&iter);
 
       // Get the length of the line and previous line
-      unsigned int length = strlen(line->str);
-      unsigned int prevLength = strlen(prevLine->str);
+      unsigned int length = CBoLineGetLength(line);
+      unsigned int prevLength = CBoLineGetLength(prevLine);
 
       // If the line is a closing curly brace and the previous line
       // is not empty or a comment
@@ -1407,7 +1416,7 @@ bool CBoFileCheckSpaceAroundComma(
       CBoLine* line = GSetIterGet(&iter);
 
       // Get the length of the line
-      unsigned int length = strlen(line->str);
+      unsigned int length = CBoLineGetLength(line);
 
       // Declare two flags to memorize the strings in the code
       bool flagQuote = false;
@@ -1594,7 +1603,7 @@ bool CBoFileCheckSpaceAroundSemicolon(
       CBoLine* line = GSetIterGet(&iter);
 
       // Get the length of the line
-      unsigned int length = strlen(line->str);
+      unsigned int length = CBoLineGetLength(line);
 
       // Declare two flags to memorize the strings in the code
       bool flagQuote = false;
@@ -1690,15 +1699,49 @@ bool CBoFileCheckSpaceAroundSemicolon(
 
 }
 
-// Return the position of the first character different of space or tab
-// or 0 if the line is empty
-unsigned int CBoGetPosHead(const char* str) {
+// Function to check if a line is a comment
+// Return true if it's a comment, else false
+bool CBoLineIsComment(const CBoLine* that) {
 
 #if BUILDMODE == 0
-  if (str == NULL) {
+  if (that == NULL) {
 
     CBoErr->_type = PBErrTypeNullPointer;
-    sprintf(CBoErr->_msg, "'str' is null");
+    sprintf(CBoErr->_msg, "'that' is null");
+    PBErrCatch(CBoErr);
+
+  }
+
+#endif
+
+  // Get the position of the head of the line
+  unsigned int posHead = CBoLineGetPosHead(that);
+
+  // If the line starts with '/'
+  if (that->str[posHead] == '/') {
+
+    // The line is a comment
+    return true;
+
+  // Else, the line doesn't start with '/'
+  } else {
+
+    // The line is not a comment
+    return false;
+
+  }
+
+}
+
+// Return the position of the first character different of space or tab
+// or 0 if the line is empty
+unsigned int CBoLineGetPosHead(const CBoLine* that) {
+
+#if BUILDMODE == 0
+  if (that == NULL) {
+
+    CBoErr->_type = PBErrTypeNullPointer;
+    sprintf(CBoErr->_msg, "'that' is null");
     PBErrCatch(CBoErr);
 
   }
@@ -1710,9 +1753,9 @@ unsigned int CBoGetPosHead(const char* str) {
 
   // Loop until the end of the line or a charcter different of space
   // or tab
-  while (str[posHead] != '\0' &&
-         (str[posHead] == ' ' ||
-          str[posHead] == '\t')) {
+  while (that->str[posHead] != '\0' &&
+         (that->str[posHead] == ' ' ||
+          that->str[posHead] == '\t')) {
 
     ++posHead;
 
@@ -1720,5 +1763,24 @@ unsigned int CBoGetPosHead(const char* str) {
 
   // Return the position of the head
   return posHead;
+
+}
+
+// Function to get the length of a line
+unsigned int CBoLineGetLength(const CBoLine* that) {
+
+#if BUILDMODE == 0
+  if (that == NULL) {
+
+    CBoErr->_type = PBErrTypeNullPointer;
+    sprintf(CBoErr->_msg, "'that' is null");
+    PBErrCatch(CBoErr);
+
+  }
+
+#endif
+
+  // Return the length of the line
+  return strlen(that->str);
 
 }
