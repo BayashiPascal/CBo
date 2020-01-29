@@ -91,14 +91,21 @@ bool CBoFileCheckNoCurlyBraceAtHead(
 
 // Function to check if a line is a comment
 // Return true if it's a comment, else false
-bool CBoLineIsComment(const CBoLine* that);
+bool CBoLineIsComment(const CBoLine* const that);
 
 // Return the position of the first character different of space or tab
 // or 0 if the line is empty
-unsigned int CBoLineGetPosHead(const CBoLine* that);
+unsigned int CBoLineGetPosHead(const CBoLine* const that);
 
 // Function to get the length of a line
-unsigned int CBoLineGetLength(const CBoLine* that);
+unsigned int CBoLineGetLength(const CBoLine* const that);
+
+// Function to get the position of the closing character from the
+// opening character at position 'from'
+// Return the position if ofund, or 'from' if not found
+unsigned int CBoLineGetPosCloseCharFrom(
+  const CBoLine* const that,
+  const unsigned int from);
 
 // ================ Functions implementation ==================
 
@@ -1715,7 +1722,8 @@ bool CBoFileCheckSpaceAroundSemicolon(
 
 }
 
-// Check there is no opening curly brace on the head of lines of the
+// Check there is no opening curly brace on the head without its
+// closing curly brace on the same line of lines of the
 // CBoFile 'that' with the CBo 'cbo'
 // Return true if there was no problem, else false
 bool CBoFileCheckNoCurlyBraceAtHead(
@@ -1770,33 +1778,49 @@ bool CBoFileCheckNoCurlyBraceAtHead(
       // Get the line
       CBoLine* line = GSetIterGet(&iter);
 
+      // Get the position of the head of the line
+      unsigned int posHead = CBoLineGetPosHead(line);
+
       // If the line starts with an opening curly brace
-      if (line->str[CBoLineGetPosHead(line)] == '{') {
+      // and its closing brace is not on the same line
+      if (line->str[posHead] == '{') {
 
-        // Update the success flag
-        success = false;
+        // Get the position of its closing brace
+        unsigned int posCloseBrace =
+          CBoLineGetPosCloseCharFrom(
+            line,
+            posHead);
 
-        // Display an error message
-        char* errMsg =
-          SGRString(
-            SGR_ColorFG(255, 0, 0,
-              "%s:%d Opening curly brace at head of line."));
-        char* errLine =
-          SGRString(
-            SGR_ColorBG(50, 50, 50, "%s"));
-        printf("\n");
-        printf(
-          errMsg,
-          that->filePath,
-          iLine + 1);
-        printf("\n");
-        printf(
-          errLine,
-          line->str);
-        printf("\n");
-        free(errMsg);
-        free(errLine);
-        fflush(stdout);
+        // If the closing brace is not on the same line
+        if (posCloseBrace == posHead) {
+
+          // Update the success flag
+          success = false;
+
+          // Display an error message
+          char* errMsg =
+            SGRString(
+              SGR_ColorFG(255, 0, 0,
+                "%s:%d Opening curly brace at head of line."
+                ""));
+          char* errLine =
+            SGRString(
+              SGR_ColorBG(50, 50, 50, "%s"));
+          printf("\n");
+          printf(
+            errMsg,
+            that->filePath,
+            iLine + 1);
+          printf("\n");
+          printf(
+            errLine,
+            line->str);
+          printf("\n");
+          free(errMsg);
+          free(errLine);
+          fflush(stdout);
+
+        }
 
       }
 
@@ -1829,7 +1853,7 @@ bool CBoFileCheckNoCurlyBraceAtHead(
 
 // Function to check if a line is a comment
 // Return true if it's a comment, else false
-bool CBoLineIsComment(const CBoLine* that) {
+bool CBoLineIsComment(const CBoLine* const that) {
 
 #if BUILDMODE == 0
   if (that == NULL) {
@@ -1863,7 +1887,7 @@ bool CBoLineIsComment(const CBoLine* that) {
 
 // Return the position of the first character different of space or tab
 // or 0 if the line is empty
-unsigned int CBoLineGetPosHead(const CBoLine* that) {
+unsigned int CBoLineGetPosHead(const CBoLine* const that) {
 
 #if BUILDMODE == 0
   if (that == NULL) {
@@ -1895,7 +1919,7 @@ unsigned int CBoLineGetPosHead(const CBoLine* that) {
 }
 
 // Function to get the length of a line
-unsigned int CBoLineGetLength(const CBoLine* that) {
+unsigned int CBoLineGetLength(const CBoLine* const that) {
 
 #if BUILDMODE == 0
   if (that == NULL) {
@@ -1910,5 +1934,89 @@ unsigned int CBoLineGetLength(const CBoLine* that) {
 
   // Return the length of the line
   return strlen(that->str);
+
+}
+
+// Function to get the position of the closing character from the
+// opening character at position 'from'
+// Return the position if ofund, or 'from' if not found
+unsigned int CBoLineGetPosCloseCharFrom(
+  const CBoLine* const that,
+  const unsigned int from) {
+
+#if BUILDMODE == 0
+  if (that == NULL) {
+
+    CBoErr->_type = PBErrTypeNullPointer;
+    sprintf(CBoErr->_msg, "'that' is null");
+    PBErrCatch(CBoErr);
+
+  }
+
+#endif
+
+  // Declare a variable to memorize the current position in the line
+  unsigned int pos = from + 1;
+
+  // Declare a variable to memorize the block level
+  unsigned int lvl = 0;
+
+  // Get the length of the line
+  unsigned int length = CBoLineGetLength(that);
+
+  // Get the closing character corresponding to the opening one
+  unsigned char closeChar = ' ';
+  switch (that->str[from]) {
+
+    case '{':
+      closeChar = '}';
+      break;
+    case '(':
+      closeChar = ')';
+      break;
+    case '[':
+      closeChar = ']';
+      break;
+    default:
+      break;
+
+  }
+
+  // Loop on the char of the line
+  do {
+
+    // If the character at current position is an opening char
+    if (that->str[pos] == that->str[from]) {
+
+      // Increment the block level
+      ++lvl;
+
+    // Else, if the character at current position is a closing char
+    } else if (that->str[pos] == closeChar) {
+
+      // Decrement the block level
+      --lvl;
+
+    }
+
+    ++pos;
+
+  } while (pos < length &&
+           that->str[pos] != closeChar &&
+           lvl != 0);
+
+  // If we have found the closing char
+  if (pos < length) {
+
+    // Return its position
+    return pos;
+
+  // Else, we haven't found the closing char
+  } else {
+
+    // Return the 'from' position
+    return from;
+
+  }
 
 }
