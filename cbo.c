@@ -1415,106 +1415,111 @@ bool CBoFileCheckSpaceAroundComma(
       // Get the line
       CBoLine* line = GSetIterGet(&iter);
 
-      // Get the length of the line
-      unsigned int length = CBoLineGetLength(line);
+      // If the line is not a comment
+      if (CBoLineIsComment(line) == false) {
 
-      // Declare two flags to memorize the strings in the code
-      bool flagQuote = false;
-      bool flagDoubleQuote = false;
+        // Get the length of the line
+        unsigned int length = CBoLineGetLength(line);
 
-      // Loop on the char of the line
-      for (unsigned int iChar = 0;
-           iChar < length;
-           ++iChar) {
+        // Declare two flags to memorize the strings in the code
+        bool flagQuote = false;
+        bool flagDoubleQuote = false;
 
-        if (line->str[iChar] == '\'') {
+        // Loop on the char of the line
+        for (unsigned int iChar = 0;
+             iChar < length;
+             ++iChar) {
 
-          if (flagDoubleQuote == false) {
+          if (line->str[iChar] == '\'') {
 
-            flagQuote = !flagQuote;
+            if (flagDoubleQuote == false) {
+
+              flagQuote = !flagQuote;
+
+            }
+
+          } else if (line->str[iChar] == '"') {
+
+            if (flagQuote == false) {
+
+              flagDoubleQuote = !flagDoubleQuote;
+
+            }
 
           }
 
-        } else if (line->str[iChar] == '"') {
+          // If the char is a comma and the previous one is a space
+          if (flagQuote == false &&
+              flagDoubleQuote == false &&
+              line->str[iChar] == ',' &&
+              (iChar == 0 ||
+               line->str[iChar - 1] == ' ' ||
+               line->str[iChar - 1] == '\t')) {
 
-          if (flagQuote == false) {
+            // Update the success flag
+            success = false;
 
-            flagDoubleQuote = !flagDoubleQuote;
+            // Display an error message
+            char* errMsg =
+              SGRString(
+                SGR_ColorFG(255, 0, 0,
+                  "%s:%d Space before comma."));
+            char* errLine =
+              SGRString(
+                SGR_ColorBG(50, 50, 50, "%s"));
+            printf("\n");
+            printf(
+              errMsg,
+              that->filePath,
+              iLine + 1);
+            printf("\n");
+            printf(
+              errLine,
+              line->str);
+            printf("\n");
+            free(errMsg);
+            free(errLine);
+            fflush(stdout);
+
+            // Skip the end of the line
+            iChar = length;
+
+          // If the char is a comma and the next one is a space
+          } else if (flagQuote == false &&
+                     flagDoubleQuote == false &&
+                     line->str[iChar] == ',' &&
+                     line->str[iChar + 1] != ' ' &&
+                     iChar != length - 1) {
+
+            // Update the success flag
+            success = false;
+
+            // Display an error message
+            char* errMsg =
+              SGRString(
+                SGR_ColorFG(255, 0, 0,
+                  "%s:%d No space after comma."));
+            char* errLine =
+              SGRString(
+                SGR_ColorBG(50, 50, 50, "%s"));
+            printf("\n");
+            printf(
+              errMsg,
+              that->filePath,
+              iLine + 1);
+            printf("\n");
+            printf(
+              errLine,
+              line->str);
+            printf("\n");
+            free(errMsg);
+            free(errLine);
+            fflush(stdout);
+
+            // Skip the end of the line
+            iChar = length;
 
           }
-
-        }
-
-        // If the char is a comma and the previous one is a space
-        if (flagQuote == false &&
-            flagDoubleQuote == false &&
-            line->str[iChar] == ',' &&
-            (iChar == 0 ||
-             line->str[iChar - 1] == ' ' ||
-             line->str[iChar - 1] == '\t')) {
-
-          // Update the success flag
-          success = false;
-
-          // Display an error message
-          char* errMsg =
-            SGRString(
-              SGR_ColorFG(255, 0, 0,
-                "%s:%d Space before comma."));
-          char* errLine =
-            SGRString(
-              SGR_ColorBG(50, 50, 50, "%s"));
-          printf("\n");
-          printf(
-            errMsg,
-            that->filePath,
-            iLine + 1);
-          printf("\n");
-          printf(
-            errLine,
-            line->str);
-          printf("\n");
-          free(errMsg);
-          free(errLine);
-          fflush(stdout);
-
-          // Skip the end of the line
-          iChar = length;
-
-        // If the char is a comma and the next one is a space
-        } else if (flagQuote == false &&
-                   flagDoubleQuote == false &&
-                   line->str[iChar] == ',' &&
-                   line->str[iChar + 1] != ' ' &&
-                   iChar != length - 1) {
-
-          // Update the success flag
-          success = false;
-
-          // Display an error message
-          char* errMsg =
-            SGRString(
-              SGR_ColorFG(255, 0, 0,
-                "%s:%d No space after comma."));
-          char* errLine =
-            SGRString(
-              SGR_ColorBG(50, 50, 50, "%s"));
-          printf("\n");
-          printf(
-            errMsg,
-            that->filePath,
-            iLine + 1);
-          printf("\n");
-          printf(
-            errLine,
-            line->str);
-          printf("\n");
-          free(errMsg);
-          free(errLine);
-          fflush(stdout);
-
-          // Skip the end of the line
-          iChar = length;
 
         }
 
