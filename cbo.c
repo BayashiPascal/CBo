@@ -2002,8 +2002,8 @@ unsigned int CBoLineGetPosCloseCharFrom(
     ++pos;
 
   } while (pos < length &&
-           that->str[pos] != closeChar &&
-           lvl != 0);
+           (that->str[pos] != closeChar ||
+            lvl != 0));
 
   // If we have found the closing char
   if (pos < length) {
