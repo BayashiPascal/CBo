@@ -82,6 +82,13 @@ bool CBoFileCheckSpaceAroundSemicolon(
   CBoFile* const that,
   CBo* const cbo);
 
+// Check there is no opening curly brace on the head of lines of the
+// CBoFile 'that' with the CBo 'cbo'
+// Return true if there was no problem, else false
+bool CBoFileCheckNoCurlyBraceAtHead(
+  CBoFile* const that,
+  CBo* const cbo);
+
 // Function to check if a line is a comment
 // Return true if it's a comment, else false
 bool CBoLineIsComment(const CBoLine* that);
@@ -1048,8 +1055,8 @@ bool CBoFileCheckEmptyLineAfterOpeningCurlyBrace(
       unsigned int length = CBoLineGetLength(line);
       unsigned int prevLength = CBoLineGetLength(prevLine);
 
-      // If the line is a closing curly brace and the previous line
-      // is not empty or a comment
+      // If the previous line ends with a closing curly brace
+      // and the line is not empty
       if (prevLength > 0 &&
           prevLine->str[prevLength - 1] == '{' &&
           length != 0) {
@@ -1687,6 +1694,118 @@ bool CBoFileCheckSpaceAroundSemicolon(
       1.0);
     printf(
       "CheckSpaceAroundSemicolon %s",
+      ProgBarTxtGet(&progBar));
+    if (success == true) {
+
+      printf(" OK");
+
+    }
+
+    printf("\n");
+    fflush(stdout);
+
+  }
+
+  // Return the successfull code
+  return success;
+
+}
+
+// Check there is no opening curly brace on the head of lines of the
+// CBoFile 'that' with the CBo 'cbo'
+// Return true if there was no problem, else false
+bool CBoFileCheckNoCurlyBraceAtHead(
+  CBoFile* const that,
+  CBo* const cbo) {
+
+#if BUILDMODE == 0
+  if (that == NULL) {
+
+    CBoErr->_type = PBErrTypeNullPointer;
+    sprintf(CBoErr->_msg, "'that' is null");
+    PBErrCatch(CBoErr);
+
+  }
+
+  if (cbo == NULL) {
+
+    CBoErr->_type = PBErrTypeNullPointer;
+    sprintf(CBoErr->_msg, "'cbo' is null");
+    PBErrCatch(CBoErr);
+
+  }
+
+#endif
+
+  // Declare a variable to memorize the success
+  bool success = true;
+
+  // Create a progress bar
+  ProgBarTxt progBar = ProgBarTxtCreateStatic();
+
+  // If the file is not empty
+  if (GSetNbElem(&(that->lines)) > 1) {
+
+    // Declare an iterator on the lines
+    GSetIterForward iter =
+      GSetIterForwardCreateStatic(&(that->lines));
+
+    // Loop on the lines
+    unsigned int iLine = 0;
+    do {
+
+      // Update and display the ProgBar
+      ProgBarTxtSet(
+        &progBar,
+        (float)iLine / (float)GSetNbElem(&(that->lines)));
+      printf(
+        "CheckNoCurlyBraceAtHead %s\r",
+        ProgBarTxtGet(&progBar));
+      fflush(stdout);
+
+      // Get the line
+      CBoLine* line = GSetIterGet(&iter);
+
+      // If the line starts with an opening curly brace
+      if (line->str[CBoLineGetPosHead(line)] == '{') {
+
+        // Update the success flag
+        success = false;
+
+        // Display an error message
+        char* errMsg =
+          SGRString(
+            SGR_ColorFG(255, 0, 0,
+              "%s:%d Opening curly brace at head of line."));
+        char* errLine =
+          SGRString(
+            SGR_ColorBG(50, 50, 50, "%s"));
+        printf("\n");
+        printf(
+          errMsg,
+          that->filePath,
+          iLine + 1);
+        printf("\n");
+        printf(
+          errLine,
+          line->str);
+        printf("\n");
+        free(errMsg);
+        free(errLine);
+        fflush(stdout);
+
+      }
+
+      ++iLine;
+
+    } while (GSetIterStep(&iter));
+
+    // Update and display the ProgBar
+    ProgBarTxtSet(
+      &progBar,
+      1.0);
+    printf(
+      "CheckNoCurlyBraceAtHead %s",
       ProgBarTxtGet(&progBar));
     if (success == true) {
 
