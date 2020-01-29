@@ -619,6 +619,10 @@ bool CBoFileCheck(
       CBoFileCheckSeveralBlankLines(
         that,
         cbo);
+    success &=
+      CBoFileCheckNoCurlyBraceAtHead(
+        that,
+        cbo);
 
   }
 
