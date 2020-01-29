@@ -2,6 +2,13 @@
 #include <stdio.h>
 #include "cbo.h"
 
+// Return the position of the last character 'c' excluding the string
+// content, or the length of the string if the character could not be
+// found
+unsigned int CBoLineGetPosLast(
+  const CBoLine* const that,
+  const char c);
+
 int main(
   int argc,
   const char** const argv) {

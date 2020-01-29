@@ -89,6 +89,13 @@ bool CBoFileCheckNoCurlyBraceAtHead(
   CBoFile* const that,
   CBo* const cbo);
 
+// Check there is no closing curly brace on the tail of lines of the
+// CBoFile 'that' with the CBo 'cbo'
+// Return true if there was no problem, else false
+bool CBoFileCheckNoCurlyBraceAtTail(
+  CBoFile* const that,
+  CBo* const cbo);
+
 // Function to check if a line is a comment
 // Return true if it's a comment, else false
 bool CBoLineIsComment(const CBoLine* const that);
@@ -106,6 +113,20 @@ unsigned int CBoLineGetLength(const CBoLine* const that);
 unsigned int CBoLineGetPosCloseCharFrom(
   const CBoLine* const that,
   const unsigned int from);
+
+// Function to get the position of the opening character from the
+// closing character at position 'from'
+// Return the position if found, or 'from' if not found
+unsigned int CBoLineGetPosOpenCharFrom(
+  const CBoLine* const that,
+  const unsigned int from);
+
+// Return the position of the last character 'c' excluding the string
+// content, or the length of the string if the character could not be
+// found
+unsigned int CBoLineGetPosLast(
+  const CBoLine* const that,
+  const char c);
 
 // ================ Functions implementation ==================
 
@@ -628,6 +649,10 @@ bool CBoFileCheck(
         cbo);
     success &=
       CBoFileCheckNoCurlyBraceAtHead(
+        that,
+        cbo);
+    success &=
+      CBoFileCheckNoCurlyBraceAtTail(
         that,
         cbo);
 
@@ -1851,6 +1876,142 @@ bool CBoFileCheckNoCurlyBraceAtHead(
 
 }
 
+// Check there is no closing curly brace on the tail of lines of the
+// CBoFile 'that' with the CBo 'cbo'
+// Return true if there was no problem, else false
+bool CBoFileCheckNoCurlyBraceAtTail(
+  CBoFile* const that,
+  CBo* const cbo) {
+
+#if BUILDMODE == 0
+  if (that == NULL) {
+
+    CBoErr->_type = PBErrTypeNullPointer;
+    sprintf(CBoErr->_msg, "'that' is null");
+    PBErrCatch(CBoErr);
+
+  }
+
+  if (cbo == NULL) {
+
+    CBoErr->_type = PBErrTypeNullPointer;
+    sprintf(CBoErr->_msg, "'cbo' is null");
+    PBErrCatch(CBoErr);
+
+  }
+
+#endif
+
+  // Declare a variable to memorize the success
+  bool success = true;
+
+  // Create a progress bar
+  ProgBarTxt progBar = ProgBarTxtCreateStatic();
+
+  // If the file is not empty
+  if (GSetNbElem(&(that->lines)) > 1) {
+
+    // Declare an iterator on the lines
+    GSetIterForward iter =
+      GSetIterForwardCreateStatic(&(that->lines));
+
+    // Loop on the lines
+    unsigned int iLine = 0;
+    do {
+
+      // Update and display the ProgBar
+      ProgBarTxtSet(
+        &progBar,
+        (float)iLine / (float)GSetNbElem(&(that->lines)));
+      printf(
+        "CheckNoCurlyBraceAtTail %s\r",
+        ProgBarTxtGet(&progBar));
+      fflush(stdout);
+
+      // Get the line
+      CBoLine* line = GSetIterGet(&iter);
+
+      // Get the length of the line
+      unsigned int length = CBoLineGetLength(line);
+
+      // Get the position of the head of the line
+      unsigned int posHead = CBoLineGetPosHead(line);
+
+      // Get the position of the last closing curly brace
+      unsigned int posLastCloseBrace =
+        CBoLineGetPosLast(
+          line,
+          '}');
+
+      // If the last closing brace is not at the head of the line
+      if (posLastCloseBrace != length &&
+          posHead != posLastCloseBrace) {
+
+        // Get the position of its opening brace
+        unsigned int posOpenBrace =
+          CBoLineGetPosOpenCharFrom(
+            line,
+            posLastCloseBrace);
+
+        // If the closing brace is not on the same line
+        if (posOpenBrace == posLastCloseBrace) {
+
+          // Update the success flag
+          success = false;
+
+          // Display an error message
+          char* errMsg =
+            SGRString(
+              SGR_ColorFG(255, 0, 0,
+                "%s:%d Closing curly brace at tail of line."));
+          char* errLine =
+            SGRString(
+              SGR_ColorBG(50, 50, 50, "%s"));
+          printf("\n");
+          printf(
+            errMsg,
+            that->filePath,
+            iLine + 1);
+          printf("\n");
+          printf(
+            errLine,
+            line->str);
+          printf("\n");
+          free(errMsg);
+          free(errLine);
+          fflush(stdout);
+
+        }
+
+      }
+
+      ++iLine;
+
+    } while (GSetIterStep(&iter));
+
+    // Update and display the ProgBar
+    ProgBarTxtSet(
+      &progBar,
+      1.0);
+    printf(
+      "CheckNoCurlyBraceAtTail %s",
+      ProgBarTxtGet(&progBar));
+    if (success == true) {
+
+      printf(" OK");
+
+    }
+
+    printf("\n");
+    fflush(stdout);
+
+  }
+
+  // Return the successfull code
+  return success;
+
+}
+
 // Function to check if a line is a comment
 // Return true if it's a comment, else false
 bool CBoLineIsComment(const CBoLine* const that) {
@@ -1939,7 +2100,7 @@ unsigned int CBoLineGetLength(const CBoLine* const that) {
 
 // Function to get the position of the closing character from the
 // opening character at position 'from'
-// Return the position if ofund, or 'from' if not found
+// Return the position if found, or 'from' if not found
 unsigned int CBoLineGetPosCloseCharFrom(
   const CBoLine* const that,
   const unsigned int from) {
@@ -1982,20 +2143,49 @@ unsigned int CBoLineGetPosCloseCharFrom(
 
   }
 
+  // Flag to escape the strings
+  bool flagQuote = false;
+  bool flagDoubleQuote = false;
+
   // Loop on the char of the line
   do {
 
-    // If the character at current position is an opening char
-    if (that->str[pos] == that->str[from]) {
+    // If it's the beginning of a string
+    if (flagQuote == false &&
+        that->str[pos] == '"' &&
+        pos > 0 &&
+        that->str[pos - 1] != '\\') {
 
-      // Increment the block level
-      ++lvl;
+      // Update the flag
+      flagDoubleQuote = !flagDoubleQuote;
 
-    // Else, if the character at current position is a closing char
-    } else if (that->str[pos] == closeChar) {
+    } else if (flagDoubleQuote == false &&
+        that->str[pos] == '\'' &&
+        pos > 0 &&
+        that->str[pos - 1] != '\\') {
 
-      // Decrement the block level
-      --lvl;
+      // Update the flag
+      flagQuote = !flagQuote;
+
+    }
+
+    // If we are not in a string
+    if (flagQuote == false &&
+        flagDoubleQuote == false) {
+
+      // If the character at current position is an opening char
+      if (that->str[pos] == that->str[from]) {
+
+        // Increment the block level
+        ++lvl;
+
+      // Else, if the character at current position is a closing char
+      } else if (that->str[pos] == closeChar) {
+
+        // Decrement the block level
+        --lvl;
+
+      }
 
     }
 
@@ -2017,5 +2207,188 @@ unsigned int CBoLineGetPosCloseCharFrom(
     return from;
 
   }
+
+}
+
+// Function to get the position of the opening character from the
+// closing character at position 'from'
+// Return the position if found, or 'from' if not found
+unsigned int CBoLineGetPosOpenCharFrom(
+  const CBoLine* const that,
+  const unsigned int from) {
+
+#if BUILDMODE == 0
+  if (that == NULL) {
+
+    CBoErr->_type = PBErrTypeNullPointer;
+    sprintf(CBoErr->_msg, "'that' is null");
+    PBErrCatch(CBoErr);
+
+  }
+
+#endif
+
+  // Declare a variable to memorize the current position in the line
+  int pos = from;
+
+  // Declare a variable to memorize the block level
+  unsigned int lvl = 0;
+
+  // Get the closing character corresponding to the opening one
+  unsigned char openChar = ' ';
+  switch (that->str[from]) {
+
+    case '}':
+      openChar = '{';
+      break;
+    case ')':
+      openChar = '(';
+      break;
+    case ']':
+      openChar = '[';
+      break;
+    default:
+      break;
+
+  }
+
+  // Flag to escape the strings
+  bool flagQuote = false;
+  bool flagDoubleQuote = false;
+
+  // Loop on the char of the line
+  do {
+
+    // If it's the beginning of a string
+    if (flagQuote == false &&
+        that->str[pos] == '"' &&
+        pos > 0 &&
+        that->str[pos - 1] != '\\') {
+
+      // Update the flag
+      flagDoubleQuote = !flagDoubleQuote;
+
+    } else if (flagDoubleQuote == false &&
+        that->str[pos] == '\'' &&
+        pos > 0 &&
+        that->str[pos - 1] != '\\') {
+
+      // Update the flag
+      flagQuote = !flagQuote;
+
+    }
+
+    // If we are not in a string
+    if (flagQuote == false &&
+        flagDoubleQuote == false) {
+
+      // If the character at current position is a closing char
+      if (that->str[pos] == that->str[from]) {
+
+        // Increment the block level
+        ++lvl;
+
+      // Else, if the character at current position is an opening char
+      } else if (that->str[pos] == openChar) {
+
+        // Decrement the block level
+        --lvl;
+
+      }
+
+    }
+
+    --pos;
+
+  } while (pos >= 0 &&
+           lvl != 0);
+
+  // If we have found the opening char
+  if (lvl == 0) {
+
+    // Return its position
+    return pos + 1;
+
+  // Else, we haven't found the closing char
+  } else {
+
+    // Return the 'from' position
+    return from;
+
+  }
+
+}
+
+// Return the position of the last character 'c' excluding the string
+// content, or the length of the string if the character could not be
+// found
+unsigned int CBoLineGetPosLast(
+  const CBoLine* const that,
+  const char c) {
+
+#if BUILDMODE == 0
+  if (that == NULL) {
+
+    CBoErr->_type = PBErrTypeNullPointer;
+    sprintf(CBoErr->_msg, "'that' is null");
+    PBErrCatch(CBoErr);
+
+  }
+
+#endif
+
+  // Get the length of the line
+  int length = CBoLineGetLength(that);
+
+  // Declare a variable to memorize the current position
+  int pos = length - 1;
+
+  // Flag to escape the strings
+  bool flagQuote = false;
+  bool flagDoubleQuote = false;
+
+  // Loop on the char of the line
+  do {
+
+    // If it's the beginning of a string
+    if (flagQuote == false &&
+        that->str[pos] == '"' &&
+        pos > 0 &&
+        that->str[pos - 1] != '\\') {
+
+      // Update the flag
+      flagDoubleQuote = !flagDoubleQuote;
+
+    } else if (flagDoubleQuote == false &&
+        that->str[pos] == '\'' &&
+        pos > 0 &&
+        that->str[pos - 1] != '\\') {
+
+      // Update the flag
+      flagQuote = !flagQuote;
+
+    }
+
+    // If we are not in a string
+    if (flagQuote == false &&
+        flagDoubleQuote == false) {
+
+      // If the character at the curren tposition is the searched
+      // character 'c'
+      if (that->str[pos] == c) {
+
+        // Return the position
+        return pos;
+
+      }
+
+    }
+
+    --pos;
+
+  } while (pos >= 0);
+
+  // If we reach here, we haven't found the char 'c'
+  return length;
 
 }
