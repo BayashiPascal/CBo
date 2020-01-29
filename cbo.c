@@ -2002,14 +2002,13 @@ unsigned int CBoLineGetPosCloseCharFrom(
     ++pos;
 
   } while (pos < length &&
-           (that->str[pos] != closeChar ||
-            lvl != 0));
+           lvl != 0);
 
   // If we have found the closing char
-  if (pos < length) {
+  if (lvl == 0) {
 
     // Return its position
-    return pos;
+    return pos - 1;
 
   // Else, we haven't found the closing char
   } else {
