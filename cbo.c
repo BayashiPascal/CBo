@@ -1224,6 +1224,7 @@ bool CBoFileCheckEmptyLineAfterClosingCurlyBrace(
       // If the line is a closing curly brace and the previous line
       // is not empty or a comment
       if (prevLength > 0 &&
+          CBoLineIsComment(prevLine) == false &&
           prevLine->str[prevLength - 1] == '}' &&
           length != 0) {
 
