@@ -6,16 +6,152 @@
 #include "cbo-inline.c"
 #endif
 
+// ================= Define ==================
+
+#define CBOLINE_MAX_LENGTH 79
+
+// ================= Data structures ===================
+
+// Structure to memorize one line of a file
+typedef struct CBoLine {
+
+  // Original line
+  char* str;
+
+} CBoLine;
+
+// Enum for the file type
+typedef enum CBoFileType {
+
+  CBoFileType_unknown,
+  CBoFileType_C_header,
+  CBoFileType_C_body
+
+} CBoFileType;
+
+// Structure to memorize the info about one file
+typedef struct CBoFile {
+
+  // Pointer to the file path
+  const char* filePath;
+  // Type of the file
+  CBoFileType type;
+  // Set of lines
+  GSet lines;
+  // Set of CBoError
+  GSet errors;
+
+} CBoFile;
+
+// Enum for the error type
+typedef enum CBoErrorType {
+
+  CBoErrorType_LineLength,
+  CBoErrorType_TrailingSpace,
+  CBoErrorType_EmptyLineBeforeClosingCurlyBrace,
+  CBoErrorType_EmptyLineAfterOpeningCurlyBrace,
+  CBoErrorType_EmptyLineAfterClosingCurlyBrace,
+  CBoErrorType_SpaceAroundComma,
+  CBoErrorType_SpaceAroundSemicolon,
+  CBoErrorType_SeveralBlankLine,
+  CBoErrorType_NoCurlyBraceAtHead,
+  CBoErrorType_NoCurlyBraceAtTail,
+
+} CBoErrorType;
+
+// Structure to memorize the info about one error
+typedef struct CBoError {
+
+  // Pointer to the file containing the error
+  CBoFile* file;
+  // Line of the error
+  CBoLine* line;
+  // Index of the line of the error
+  unsigned int iLine;
+  // Type of the error
+  CBoErrorType type;
+
+} CBoError;
+
+// ================ Functions declaration ====================
+
+
+// ================= Global variables ===================
+
 // Label for the file types
 const char* cboFileTypeStr[] = {
 
   "unknown",
   "C header",
-  "C body"
+  "C body",
+
+};
+
+// Label for the error types
+const char* cboErrorTypeStr[] = {
+
+  "Line too long",
+  "Trailing space(s)",
+  "No empty line before closing curly brace",
+  "No empty line after opening curly brace",
+  "No empty line after closing curly brace",
+  "No space after comma, or space before comma",
+  "No space after semicolon, or space before semicolon",
+  "Several consecutive blank lines",
+  "Unbalanced curly brace at head of line",
+  "Unbalanced curly brace at tail of line",
 
 };
 
 // ================ Functions declaration ==================
+
+// Function to create a new CBoFile from its file path,
+// Return a pointer toward the new CBoFile
+CBoFile* CBoFileCreate(const char* const filePath);
+
+// Function to free the memory used by the CBoFile 'that'
+void CBoFileFree(CBoFile** const that);
+
+// Function to add the CBoError 'error' to the CBoFile 'that'
+void CBoFileAddError(
+  CBoFile* const that,
+  CBoError* const error);
+
+// Display the errors of the CBoFile 'that' on the FILE 'stream'
+void CBoFilePrintErrors(
+  CBoFile* const that,
+  FILE* stream);
+
+// Function to create a new CBoLine from its content,
+// Return a pointer toward the new CBoLine
+CBoLine* CBoLineCreate(const char* const str);
+
+// Function to free the memory used by the CBoLine 'that'
+void CBoLineFree(CBoLine** const that);
+
+// Return the position of the last character 'c' excluding the string
+// content, or the length of the string if the character could not be
+// found
+unsigned int CBoLineGetPosLast(
+  const CBoLine* const that,
+  const char c);
+
+// Function to create a new CBoError from its file, line, index of line
+// and type
+// Return a pointer toward the new CBoError
+CBoError* CBoErrorCreate(
+  CBoFile* const file,
+  CBoLine* const line,
+  const unsigned int iLine,
+  const CBoErrorType type);
+
+// Function to free the memory used by the CBoError 'that'
+void CBoErrorFree(CBoError** const that);
+
+// Function to display the CBoError 'that' on the stream 'stream'
+void CBoErrorPrint(
+  const CBoError* const that,
+  FILE* const stream);
 
 // Check the CBoFile 'that' with the CBo 'cbo'
 // Return true if there was no problem, else false
@@ -26,6 +162,9 @@ bool CBoFileCheck(
 // Function to detect the type of a file from its path
 // Return a CBoFileType
 CBoFileType CBoFileGetTypeFromPath(const char* const filePath);
+
+// Return the number of errors in the CBoFile 'that'
+unsigned int CBoFileGetNbError(const CBoFile* const that);
 
 // Check the length of line on the CBoFile 'that' with the CBo 'cbo'
 // Return true if there was no problem, else false
@@ -140,6 +279,7 @@ CBo* CBoCreate(void) {
   // Init the properties
   that->filePaths = GSetStrCreateStatic();
   that->files = GSetCreateStatic();
+  that->filesWithError = GSetCreateStatic();
 
   // Return the new CBo
   return that;
@@ -153,6 +293,7 @@ void CBoFree(CBo** const that) {
 
   // Free memory used by properties
   GSetFlush(&((*that)->filePaths));
+  GSetFlush(&((*that)->filesWithError));
   while (GSetNbElem(&((*that)->files)) > 0) {
 
     CBoFile* file = GSetPop(&((*that)->files));
@@ -233,9 +374,69 @@ bool CBoProcessCmdLineArguments(
 
 }
 
-// Check the files
+// Function to get the number of file with error in the CBo 'that'
+unsigned int CBoGetNbFilesWithError(const CBo* const that) {
+
+#if BUILDMODE == 0
+  if (that == NULL) {
+
+    CBoErr->_type = PBErrTypeNullPointer;
+    sprintf(CBoErr->_msg, "'that' is null");
+    PBErrCatch(CBoErr);
+
+  }
+
+#endif
+
+  return GSetNbElem(&(that->filesWithError));
+  
+}
+
+// Function to get the total number of errors in the CBo 'that'
+unsigned int CBoGetNbErrors(const CBo* const that) {
+
+#if BUILDMODE == 0
+  if (that == NULL) {
+
+    CBoErr->_type = PBErrTypeNullPointer;
+    sprintf(CBoErr->_msg, "'that' is null");
+    PBErrCatch(CBoErr);
+
+  }
+
+#endif
+
+  // Declare a variable to memorize the number of errors
+  unsigned int nb = 0;
+
+  // If there is files
+  if (CBoGetNbFiles(that) > 0) {
+
+    // Loop on files
+    GSetIterForward iter = GSetIterForwardCreateStatic(&(that->files));
+    do {
+
+      // Get the file
+      CBoFile* file = GSetIterGet(&iter);
+
+      // Add the number of errors on this file
+      nb += CBoFileGetNbError(file);
+
+    } while(GSetIterStep(&iter));
+
+  }
+
+  // Return the number of errors
+  return nb;
+  
+}
+
+// Check the files of the CBo 'that' and print result on
+// the FILE 'stream'
 // Return true if there was no problem, else false
-bool CBoCheckAllFiles(CBo* const that) {
+bool CBoCheckAllFiles(
+  CBo* const that,
+  FILE* stream) {
 
 #if BUILDMODE == 0
   if (that == NULL) {
@@ -253,6 +454,9 @@ bool CBoCheckAllFiles(CBo* const that) {
 
   // Declare a variable to memorize if all the file were correct
   bool allCorrect = true;
+
+  // Reset the set of files with error
+  GSetFlush(&(that->filesWithError));
 
   // If there are files to check
   if (CBoGetNbFiles(that) > 0) {
@@ -326,10 +530,28 @@ bool CBoCheckAllFiles(CBo* const that) {
       CBoFile* file = GSetIterGet(&iterFile);
 
       // Check the file
-      allCorrect &=
+      bool correct =
         CBoFileCheck(
           file,
           that);
+
+      // If the file has error(s)
+      if (correct == false) {
+
+        // Display the errors of the file
+        CBoFilePrintErrors(
+          file, 
+          stream);
+
+        // Add it to the list of files with errors
+        GSetAppend(
+          &(that->filesWithError),
+          file);
+
+      }
+
+      // Update the global flag
+      allCorrect &= correct;
 
     } while (GSetIterStep(&iterFile) == true);
 
@@ -361,6 +583,7 @@ CBoFile* CBoFileCreate(const char* const filePath) {
   that->filePath = filePath;
   that->type = CBoFileGetTypeFromPath(filePath);
   that->lines = GSetCreateStatic();
+  that->errors = GSetCreateStatic();
 
   // Declare a variable to manage error while reading the lines
   int ret = !EOF;
@@ -500,6 +723,26 @@ CBoFileType CBoFileGetTypeFromPath(const char* const filePath) {
 
 }
 
+// Return the number of errors in the CBoFile 'that'
+unsigned int CBoFileGetNbError(const CBoFile* const that) {
+
+#if BUILDMODE == 0
+  if (that == NULL) {
+
+    CBoErr->_type = PBErrTypeNullPointer;
+    sprintf(CBoErr->_msg, "'that' is null");
+    PBErrCatch(CBoErr);
+
+  }
+
+#endif
+
+  // Return the number of error
+  return GSetNbElem(&(that->errors));
+
+}
+
+
 // Function to free the memory used by the CBoFile 'that'
 void CBoFileFree(CBoFile** const that) {
 
@@ -512,12 +755,91 @@ void CBoFileFree(CBoFile** const that) {
     CBoLineFree(&line);
 
   }
+  // Free the errors
+  while (GSetNbElem(&((*that)->errors)) > 0) {
+
+    CBoError* error = GSetPop(&((*that)->errors));
+    CBoErrorFree(&error);
+
+  }
 
   // Free the CBoFile
   free(*that);
   *that = NULL;
 
 }
+
+// Function to add the CBoError 'error' to the CBoFile 'that'
+void CBoFileAddError(
+  CBoFile* const that,
+  CBoError* const error) {
+
+#if BUILDMODE == 0
+  if (that == NULL) {
+
+    CBoErr->_type = PBErrTypeNullPointer;
+    sprintf(CBoErr->_msg, "'that' is null");
+    PBErrCatch(CBoErr);
+
+  }
+
+  if (error == NULL) {
+
+    CBoErr->_type = PBErrTypeNullPointer;
+    sprintf(CBoErr->_msg, "'error' is null");
+    PBErrCatch(CBoErr);
+
+  }
+
+#endif
+
+  // Add the error sorted on the line index
+  GSetAddSort(
+    &(that->errors),
+    error,
+    error->iLine);
+
+}
+
+// Display the errors of the CBoFile 'that' on the FILE 'stream'
+void CBoFilePrintErrors(
+  CBoFile* const that,
+  FILE* stream) {
+
+#if BUILDMODE == 0
+  if (that == NULL) {
+
+    CBoErr->_type = PBErrTypeNullPointer;
+    sprintf(CBoErr->_msg, "'that' is null");
+    PBErrCatch(CBoErr);
+
+  }
+
+  if (stream == NULL) {
+
+    CBoErr->_type = PBErrTypeNullPointer;
+    sprintf(CBoErr->_msg, "'stream' is null");
+    PBErrCatch(CBoErr);
+
+  }
+
+#endif
+
+  // If there are errors
+  if (GSetNbElem(&(that->errors)) > 0) {
+    // Loop on errors
+    GSetIterForward iter = GSetIterForwardCreateStatic(&(that->errors));
+    do {
+      // Get the error
+      CBoError* error = GSetIterGet(&iter);
+      // Print the error
+      CBoErrorPrint(
+        error,
+        stream);
+    } while(GSetIterStep(&iter));
+  }
+
+  }
 
 // Function to create a new CBoLine from its content,
 // Return a pointer toward the new CBoLine
@@ -568,6 +890,125 @@ void CBoLineFree(CBoLine** const that) {
   // Free the CBoLine
   free(*that);
   *that = NULL;
+
+}
+
+// Function to create a new CBoError from its file, line, index of line
+// and type
+// Return a pointer toward the new CBoError
+CBoError* CBoErrorCreate(
+  CBoFile* const file,
+  CBoLine* const line,
+  const unsigned int iLine,
+  const CBoErrorType type) {
+
+#if BUILDMODE == 0
+  if (file == NULL) {
+
+    CBoErr->_type = PBErrTypeNullPointer;
+    sprintf(CBoErr->_msg, "'file' is null");
+    PBErrCatch(CBoErr);
+
+  }
+
+  if (line == NULL) {
+
+    CBoErr->_type = PBErrTypeNullPointer;
+    sprintf(CBoErr->_msg, "'line' is null");
+    PBErrCatch(CBoErr);
+
+  }
+
+#endif
+
+  // Declare the new CBoError
+  CBoError* that = (CBoError*)malloc(sizeof(CBoError));
+
+  if (that != NULL) {
+
+    // Init properties
+    that->file = file;
+    that->iLine = iLine;
+    that->line = line;
+    that->type = type;
+
+  }
+
+  // Return the CBoLine
+  return that;
+
+}
+
+
+// Function to free the memory used by the CBoError 'that'
+void CBoErrorFree(CBoError** const that) {
+
+  if (that == NULL || *that == NULL) return;
+
+  // Free the CBoError
+  free(*that);
+  *that = NULL;
+
+}
+
+// Function to display the CBoError 'that' on the stream 'stream'
+void CBoErrorPrint(
+  const CBoError* const that,
+  FILE* const stream) {
+
+#if BUILDMODE == 0
+  if (that == NULL) {
+
+    CBoErr->_type = PBErrTypeNullPointer;
+    sprintf(CBoErr->_msg, "'that' is null");
+    PBErrCatch(CBoErr);
+
+  }
+
+  if (stream == NULL) {
+
+    CBoErr->_type = PBErrTypeNullPointer;
+    sprintf(CBoErr->_msg, "'stream' is null");
+    PBErrCatch(CBoErr);
+
+  }
+
+#endif
+
+  // Create the coloring pattern
+  char* errMsg =
+    SGRString(
+      SGR_ColorFG(255, 0, 0, "%s:%u %s."));
+  char* errLine =
+    SGRString(
+      SGR_ColorBG(50, 50, 50, "%s"));
+
+  // Print the error message
+  fprintf(
+    stream,
+    errMsg,
+    that->file->filePath,
+    that->iLine,
+    cboErrorTypeStr[that->type]);
+  fprintf(
+    stream,
+    "\n");
+
+  // Print the error line
+  fprintf(
+    stream,
+    errLine,
+    that->line);
+  fprintf(
+    stream,
+    "\n");
+
+  // Free memory
+  free(errMsg);
+  free(errLine);
+
+  // Flush the stream
+  fflush(stream);
 
 }
 

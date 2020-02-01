@@ -2,13 +2,6 @@
 #include <stdio.h>
 #include "cbo.h"
 
-// Return the position of the last character 'c' excluding the string
-// content, or the length of the string if the character could not be
-// found
-unsigned int CBoLineGetPosLast(
-  const CBoLine* const that,
-  const char c);
-
 int main(
   int argc,
   const char** const argv) {
@@ -29,23 +22,43 @@ int main(
   // If we could process the command line arguments
   if (success == true) {
 
+    // Open the stream for output
+    FILE* stream =
+      fopen(
+        "/dev/stdout",
+        "w");
+
     // Check all the files
-    success = CBoCheckAllFiles(cbo);
+    success = 
+      CBoCheckAllFiles(
+        cbo,
+        stream);
 
     // If all the files were correct
     if (success == true) {
 
-      printf("All files were checked successfully. Nice job guy !\n");
+      fprintf(
+        stream,
+        "All %u files were checked successfully. Nice job guy !\n",
+        CBoGetNbFiles(cbo));
 
     // Else, at least one file contained error
     } else {
 
-      printf("Still some error(s). Don't give up !\n");
+      fprintf(
+        stream,
+        "%u error(s) in %u out of %u file(s) . Don't give up !\n",
+        CBoGetNbErrors(cbo),
+        CBoGetNbFilesWithError(cbo),
+        CBoGetNbFiles(cbo));
 
       // Set the return code
       retCode = 1;
 
     }
+
+    // Close the stream
+    fclose(stream);
 
   // Else, the command line is incorrect
   } else {
