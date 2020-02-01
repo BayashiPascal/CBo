@@ -286,6 +286,13 @@ CBo* CBoCreate(void) {
   that->filePaths = GSetStrCreateStatic();
   that->files = GSetCreateStatic();
   that->filesWithError = GSetCreateStatic();
+  that->flagListFileError = false;
+
+  // By default, set the output stream to stdout
+  that->stream = 
+    fopen(
+      "/dev/stdout",
+      "w");
 
   // Return the new CBo
   return that;
@@ -296,6 +303,9 @@ CBo* CBoCreate(void) {
 void CBoFree(CBo** const that) {
 
   if (that == NULL || *that == NULL) return;
+
+  // Close the stream
+  fclose((*that)->stream);
 
   // Free memory used by properties
   GSetFlush(&((*that)->filePaths));
@@ -342,7 +352,14 @@ bool CBoProcessCmdLineArguments(
 
       printf("cbo\n");
       printf("[-help] : print the help message\n");
+      printf(
+        "[-listFile] : print only the list of file(s) with error(s)\n");
       printf("\n");
+
+    } else if (strcmp(argv[iArg], "-listFile") == 0) {
+
+      // Update the flag
+      that->flagListFileError = true;
 
     } else {
 
@@ -364,7 +381,8 @@ bool CBoProcessCmdLineArguments(
       // Else the path is incorrect
       } else {
 
-        printf(
+        fprintf(
+          that->stream,
           "The path [%s] is incorrect\n",
           argv[iArg]);
         return false;
@@ -437,12 +455,9 @@ unsigned int CBoGetNbErrors(const CBo* const that) {
 
 }
 
-// Check the files of the CBo 'that' and print result on
-// the FILE 'stream'
+// Check the files of the CBo 'that'
 // Return true if there was no problem, else false
-bool CBoCheckAllFiles(
-  CBo* const that,
-  FILE* stream) {
+bool CBoCheckAllFiles(CBo* const that) {
 
 #if BUILDMODE == 0
   if (that == NULL) {
@@ -464,6 +479,20 @@ bool CBoCheckAllFiles(
   // Reset the set of files with error
   GSetFlush(&(that->filesWithError));
 
+  // Declare a variable to memorize the current stream
+  FILE* stream = that->stream;
+
+  // If we display only the list of files with errors
+  if (that->flagListFileError == true) {
+
+    // Set the output stream to null
+    that->stream =
+      fopen(
+        "/dev/null",
+        "w");
+
+  }
+
   // If there are files to check
   if (CBoGetNbFiles(that) > 0) {
 
@@ -480,11 +509,12 @@ bool CBoCheckAllFiles(
       ProgBarTxtSet(
         &progBar,
         (float)iFilePath / (float)CBoGetNbFiles(that));
-      printf(
+      fprintf(
+        that->stream,
         "Loading %d files... %s\r",
         CBoGetNbFiles(that),
         ProgBarTxtGet(&progBar));
-      fflush(stdout);
+      fflush(that->stream);
 
       // Get the file path
       const char* filePath = GSetIterGet(&iterFilePath);
@@ -504,7 +534,8 @@ bool CBoCheckAllFiles(
       } else {
 
         // Display a message
-        printf(
+        fprintf(
+          stream,
           "\nFailed to load [%s]\n",
           filePath);
 
@@ -521,11 +552,12 @@ bool CBoCheckAllFiles(
     ProgBarTxtSet(
       &progBar,
       (float)iFilePath / (float)CBoGetNbFiles(that));
-    printf(
+    fprintf(
+      that->stream,
       "Loaded %d files     %s\n",
       CBoGetNbFiles(that),
       ProgBarTxtGet(&progBar));
-    fflush(stdout);
+    fflush(that->stream);
 
     // Loop on the loaded files
     GSetIterForward iterFile =
@@ -544,10 +576,23 @@ bool CBoCheckAllFiles(
       // If the file has error(s)
       if (correct == false) {
 
-        // Display the errors of the file
-        CBoFilePrintErrors(
-          file,
-          stream);
+        // If we display only the list of files with errors
+        if (that->flagListFileError == true) {
+
+          // Print the file path
+          fprintf(
+            stream,
+            "%s\n",
+            file->filePath);
+
+        } else {
+
+          // Display the errors of the file
+          CBoFilePrintErrors(
+            file,
+            that->stream);
+
+        }
 
         // Add it to the list of files with errors
         GSetAppend(
@@ -563,7 +608,18 @@ bool CBoCheckAllFiles(
 
   }
 
-  // Return the flag
+  // If we display only the list of files with errors
+  if (that->flagListFileError == true) {
+
+    // Close the temporary null stream
+    fclose(that->stream);
+
+    // Reset the output stream
+    that->stream = stream;
+
+  }
+
+  // Return the success flag
   return allLoaded & allCorrect;
 
 }
@@ -1046,17 +1102,26 @@ bool CBoFileCheck(
 
 #endif
 
-  // Display an info message
-  char* msg =
-    SGRString(
-      SGR_ColorFG(125, 125, 255, "=== Check file [%s] as %s ==="));
-  printf(
-    msg,
-    that->filePath,
-    cboFileTypeStr[that->type]);
-  printf("\n");
-  fflush(stdout);
-  free(msg);
+  // If the user hasn't requested to display only the list of
+  // file(s) with error(s)
+  if (cbo->flagListFileError == false) {
+
+    // Display an info message
+    char* msg =
+      SGRString(
+        SGR_ColorFG(125, 125, 255, "=== Check file [%s] as %s ==="));
+    fprintf(
+      cbo->stream,
+      msg,
+      that->filePath,
+      cboFileTypeStr[that->type]);
+    fprintf(
+      cbo->stream,
+      "\n");
+    fflush(cbo->stream);
+    free(msg);
+
+  }
 
   // Declare a variable to memorize the success
   bool success = true;
@@ -1161,10 +1226,11 @@ bool CBoFileCheckLineLength(
       ProgBarTxtSet(
         &progBar,
         (float)iLine / (float)GSetNbElem(&(that->lines)));
-      printf(
+      fprintf(
+        cbo->stream,
         "CheckLineLength %s\r",
         ProgBarTxtGet(&progBar));
-      fflush(stdout);
+      fflush(cbo->stream);
 
       // Get the line
       CBoLine* line = GSetIterGet(&iter);
@@ -1201,17 +1267,22 @@ bool CBoFileCheckLineLength(
     ProgBarTxtSet(
       &progBar,
       1.0);
-    printf(
+    fprintf(
+      cbo->stream,
       "CheckLineLength %s",
       ProgBarTxtGet(&progBar));
     if (success == true) {
 
-      printf(" OK");
+      fprintf(
+        cbo->stream,
+        " OK");
 
     }
 
-    printf("\n");
-    fflush(stdout);
+    fprintf(
+      cbo->stream,
+      "\n");
+    fflush(cbo->stream);
 
   }
 
@@ -1265,10 +1336,11 @@ bool CBoFileCheckTrailingSpace(
       ProgBarTxtSet(
         &progBar,
         (float)iLine / (float)GSetNbElem(&(that->lines)));
-      printf(
+      fprintf(
+        cbo->stream,
         "CheckTrailingSpace %s\r",
         ProgBarTxtGet(&progBar));
-      fflush(stdout);
+      fflush(cbo->stream);
 
       // Get the line
       CBoLine* line = GSetIterGet(&iter);
@@ -1307,17 +1379,22 @@ bool CBoFileCheckTrailingSpace(
     ProgBarTxtSet(
       &progBar,
       1.0);
-    printf(
+    fprintf(
+      cbo->stream,
       "CheckTrailingSpace %s",
       ProgBarTxtGet(&progBar));
     if (success == true) {
 
-      printf(" OK");
+      fprintf(
+        cbo->stream,
+        " OK");
 
     }
 
-    printf("\n");
-    fflush(stdout);
+    fprintf(
+      cbo->stream,
+      "\n");
+    fflush(cbo->stream);
 
   }
 
@@ -1376,10 +1453,11 @@ bool CBoFileCheckEmptyLineBeforeClosingCurlyBrace(
       ProgBarTxtSet(
         &progBar,
         (float)iLine / (float)GSetNbElem(&(that->lines)));
-      printf(
+      fprintf(
+        cbo->stream,
         "CheckEmptyLineBeforeClosingCurlyBrace %s\r",
         ProgBarTxtGet(&progBar));
-      fflush(stdout);
+      fflush(cbo->stream);
 
       // Get the line
       CBoLine* line = GSetIterGet(&iter);
@@ -1432,17 +1510,22 @@ bool CBoFileCheckEmptyLineBeforeClosingCurlyBrace(
     ProgBarTxtSet(
       &progBar,
       1.0);
-    printf(
+    fprintf(
+      cbo->stream,
       "CheckEmptyLineBeforeClosingCurlyBrace %s",
       ProgBarTxtGet(&progBar));
     if (success == true) {
 
-      printf(" OK");
+      fprintf(
+        cbo->stream,
+        " OK");
 
     }
 
-    printf("\n");
-    fflush(stdout);
+    fprintf(
+      cbo->stream,
+      "\n");
+    fflush(cbo->stream);
 
   }
 
@@ -1504,10 +1587,11 @@ bool CBoFileCheckEmptyLineAfterOpeningCurlyBrace(
       ProgBarTxtSet(
         &progBar,
         (float)iLine / (float)GSetNbElem(&(that->lines)));
-      printf(
+      fprintf(
+        cbo->stream,
         "CheckEmptyLineAfterOpeningCurlyBrace %s\r",
         ProgBarTxtGet(&progBar));
-      fflush(stdout);
+      fflush(cbo->stream);
 
       // Get the line
       CBoLine* line = GSetIterGet(&iter);
@@ -1549,17 +1633,22 @@ bool CBoFileCheckEmptyLineAfterOpeningCurlyBrace(
     ProgBarTxtSet(
       &progBar,
       1.0);
-    printf(
+    fprintf(
+      cbo->stream,
       "CheckEmptyLineAfterOpeningCurlyBrace %s",
       ProgBarTxtGet(&progBar));
     if (success == true) {
 
-      printf(" OK");
+      fprintf(
+        cbo->stream,
+        " OK");
 
     }
 
-    printf("\n");
-    fflush(stdout);
+    fprintf(
+      cbo->stream,
+      "\n");
+    fflush(cbo->stream);
 
   }
 
@@ -1621,10 +1710,11 @@ bool CBoFileCheckEmptyLineAfterClosingCurlyBrace(
       ProgBarTxtSet(
         &progBar,
         (float)iLine / (float)GSetNbElem(&(that->lines)));
-      printf(
+      fprintf(
+        cbo->stream,
         "CheckEmptyLineAfterClosingCurlyBrace %s\r",
         ProgBarTxtGet(&progBar));
-      fflush(stdout);
+      fflush(cbo->stream);
 
       // Get the line
       CBoLine* line = GSetIterGet(&iter);
@@ -1667,17 +1757,22 @@ bool CBoFileCheckEmptyLineAfterClosingCurlyBrace(
     ProgBarTxtSet(
       &progBar,
       1.0);
-    printf(
+    fprintf(
+      cbo->stream,
       "CheckEmptyLineAfterClosingCurlyBrace %s",
       ProgBarTxtGet(&progBar));
     if (success == true) {
 
-      printf(" OK");
+      fprintf(
+        cbo->stream,
+        " OK");
 
     }
 
-    printf("\n");
-    fflush(stdout);
+    fprintf(
+      cbo->stream,
+      "\n");
+    fflush(cbo->stream);
 
   }
 
@@ -1739,10 +1834,11 @@ bool CBoFileCheckSeveralBlankLines(
       ProgBarTxtSet(
         &progBar,
         (float)iLine / (float)GSetNbElem(&(that->lines)));
-      printf(
+      fprintf(
+        cbo->stream,
         "CheckSeveralBlankLine %s\r",
         ProgBarTxtGet(&progBar));
-      fflush(stdout);
+      fflush(cbo->stream);
 
       // Get the line
       CBoLine* line = GSetIterGet(&iter);
@@ -1783,17 +1879,22 @@ bool CBoFileCheckSeveralBlankLines(
     ProgBarTxtSet(
       &progBar,
       1.0);
-    printf(
+    fprintf(
+      cbo->stream,
       "CheckSeveralBlankLine %s",
       ProgBarTxtGet(&progBar));
     if (success == true) {
 
-      printf(" OK");
+      fprintf(
+        cbo->stream,
+        " OK");
 
     }
 
-    printf("\n");
-    fflush(stdout);
+    fprintf(
+      cbo->stream,
+      "\n");
+    fflush(cbo->stream);
 
   }
 
@@ -1849,10 +1950,11 @@ bool CBoFileCheckSpaceAroundComma(
       ProgBarTxtSet(
         &progBar,
         (float)iLine / (float)GSetNbElem(&(that->lines)));
-      printf(
+      fprintf(
+        cbo->stream,
         "CheckSpaceAroundComma %s\r",
         ProgBarTxtGet(&progBar));
-      fflush(stdout);
+      fflush(cbo->stream);
 
       // Get the line
       CBoLine* line = GSetIterGet(&iter);
@@ -1957,17 +2059,22 @@ bool CBoFileCheckSpaceAroundComma(
     ProgBarTxtSet(
       &progBar,
       1.0);
-    printf(
+    fprintf(
+      cbo->stream,
       "CheckSpaceAroundComma %s",
       ProgBarTxtGet(&progBar));
     if (success == true) {
 
-      printf(" OK");
+      fprintf(
+        cbo->stream,
+        " OK");
 
     }
 
-    printf("\n");
-    fflush(stdout);
+    fprintf(
+      cbo->stream,
+      "\n");
+    fflush(cbo->stream);
 
   }
 
@@ -2023,10 +2130,11 @@ bool CBoFileCheckSpaceAroundSemicolon(
       ProgBarTxtSet(
         &progBar,
         (float)iLine / (float)GSetNbElem(&(that->lines)));
-      printf(
+      fprintf(
+        cbo->stream,
         "CheckSpaceAroundSemicolon %s\r",
         ProgBarTxtGet(&progBar));
-      fflush(stdout);
+      fflush(cbo->stream);
 
       // Get the line
       CBoLine* line = GSetIterGet(&iter);
@@ -2100,17 +2208,22 @@ bool CBoFileCheckSpaceAroundSemicolon(
     ProgBarTxtSet(
       &progBar,
       1.0);
-    printf(
+    fprintf(
+      cbo->stream,
       "CheckSpaceAroundSemicolon %s",
       ProgBarTxtGet(&progBar));
     if (success == true) {
 
-      printf(" OK");
+      fprintf(
+        cbo->stream,
+        " OK");
 
     }
 
-    printf("\n");
-    fflush(stdout);
+    fprintf(
+      cbo->stream,
+      "\n");
+    fflush(cbo->stream);
 
   }
 
@@ -2167,10 +2280,11 @@ bool CBoFileCheckNoCurlyBraceAtHead(
       ProgBarTxtSet(
         &progBar,
         (float)iLine / (float)GSetNbElem(&(that->lines)));
-      printf(
+      fprintf(
+        cbo->stream,
         "CheckNoCurlyBraceAtHead %s\r",
         ProgBarTxtGet(&progBar));
-      fflush(stdout);
+      fflush(cbo->stream);
 
       // Get the line
       CBoLine* line = GSetIterGet(&iter);
@@ -2219,17 +2333,22 @@ bool CBoFileCheckNoCurlyBraceAtHead(
     ProgBarTxtSet(
       &progBar,
       1.0);
-    printf(
+    fprintf(
+      cbo->stream,
       "CheckNoCurlyBraceAtHead %s",
       ProgBarTxtGet(&progBar));
     if (success == true) {
 
-      printf(" OK");
+      fprintf(
+        cbo->stream,
+        " OK");
 
     }
 
-    printf("\n");
-    fflush(stdout);
+    fprintf(
+      cbo->stream,
+      "\n");
+    fflush(cbo->stream);
 
   }
 
@@ -2285,10 +2404,11 @@ bool CBoFileCheckNoCurlyBraceAtTail(
       ProgBarTxtSet(
         &progBar,
         (float)iLine / (float)GSetNbElem(&(that->lines)));
-      printf(
+      fprintf(
+        cbo->stream,
         "CheckNoCurlyBraceAtTail %s\r",
         ProgBarTxtGet(&progBar));
-      fflush(stdout);
+      fflush(cbo->stream);
 
       // Get the line
       CBoLine* line = GSetIterGet(&iter);
@@ -2346,17 +2466,22 @@ bool CBoFileCheckNoCurlyBraceAtTail(
     ProgBarTxtSet(
       &progBar,
       1.0);
-    printf(
+    fprintf(
+      cbo->stream,
       "CheckNoCurlyBraceAtTail %s",
       ProgBarTxtGet(&progBar));
     if (success == true) {
 
-      printf(" OK");
+      fprintf(
+        cbo->stream,
+        " OK");
 
     }
 
-    printf("\n");
-    fflush(stdout);
+    fprintf(
+      cbo->stream,
+      "\n");
+    fflush(cbo->stream);
 
   }
 
@@ -2412,10 +2537,11 @@ bool CBoFileCheckCharBeforeDot(
       ProgBarTxtSet(
         &progBar,
         (float)iLine / (float)GSetNbElem(&(that->lines)));
-      printf(
+      fprintf(
+        cbo->stream,
         "CheckCharBeforeDot %s\r",
         ProgBarTxtGet(&progBar));
-      fflush(stdout);
+      fflush(cbo->stream);
 
       // Get the line
       CBoLine* line = GSetIterGet(&iter);
@@ -2503,17 +2629,22 @@ bool CBoFileCheckCharBeforeDot(
     ProgBarTxtSet(
       &progBar,
       1.0);
-    printf(
+    fprintf(
+      cbo->stream,
       "CheckCharBeforeDot %s",
       ProgBarTxtGet(&progBar));
     if (success == true) {
 
-      printf(" OK");
+      fprintf(
+        cbo->stream,
+        " OK");
 
     }
 
-    printf("\n");
-    fflush(stdout);
+    fprintf(
+      cbo->stream,
+      "\n");
+    fflush(cbo->stream);
 
   }
 

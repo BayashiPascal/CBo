@@ -22,43 +22,46 @@ int main(
   // If we could process the command line arguments
   if (success == true) {
 
-    // Open the stream for output
-    FILE* stream =
-      fopen(
-        "/dev/stdout",
-        "w");
-
     // Check all the files
     success =
       CBoCheckAllFiles(
-        cbo,
-        stream);
+        cbo);
 
     // If all the files were correct
     if (success == true) {
 
-      fprintf(
-        stream,
-        "All %u files were checked successfully. Nice job guy !\n",
-        CBoGetNbFiles(cbo));
+      // If the user hasn't requested to display only the list of
+      // file(s) with error(s)
+      if (CBoGetNbFiles(cbo) > 0 &&
+          cbo->flagListFileError == false) {
+
+        fprintf(
+          cbo->stream,
+          "All %u files were checked successfully. Nice job guy !\n",
+          CBoGetNbFiles(cbo));
+
+      }
 
     // Else, at least one file contained error
     } else {
 
-      fprintf(
-        stream,
-        "%u error(s) in %u out of %u file(s) . Don't give up !\n",
-        CBoGetNbErrors(cbo),
-        CBoGetNbFilesWithError(cbo),
-        CBoGetNbFiles(cbo));
+      // If the user hasn't requested to display only the list of
+      // file(s) with error(s)
+      if (cbo->flagListFileError == false) {
+
+        fprintf(
+          cbo->stream,
+          "%u error(s) in %u out of %u file(s) . Don't give up !\n",
+          CBoGetNbErrors(cbo),
+          CBoGetNbFilesWithError(cbo),
+          CBoGetNbFiles(cbo));
+
+      }
 
       // Set the return code
       retCode = 1;
 
     }
-
-    // Close the stream
-    fclose(stream);
 
   // Else, the command line is incorrect
   } else {

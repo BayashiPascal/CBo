@@ -23,6 +23,10 @@ typedef struct CBo {
   GSet files;
   // Set of CBoFile with error
   GSet filesWithError;
+  // Stream on which the output is printed
+  FILE* stream;
+  // Flag to remember if we print only the list of files with errors
+  bool flagListFileError;
 
 } CBo;
 
@@ -42,12 +46,9 @@ bool CBoProcessCmdLineArguments(
            const int argc,
   const char** const argv);
 
-// Check the files of the CBo 'that' and print result on
-// the FILE 'stream'
+// Check the files of the CBo 'that'
 // Return true if there was no problem, else false
-bool CBoCheckAllFiles(
-  CBo* const that,
-  FILE* stream);
+bool CBoCheckAllFiles(CBo* const that);
 
 // Get the number of file to check
 #if BUILDMODE != 0
