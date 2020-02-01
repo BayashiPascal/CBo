@@ -8,6 +8,7 @@
 
 // ================= Define ==================
 
+// Max length of a line
 #define CBOLINE_MAX_LENGTH 79
 
 // ================= Data structures ===================
@@ -56,6 +57,7 @@ typedef enum CBoErrorType {
   CBoErrorType_EmptyLineAfterClosingCurlyBrace,
   CBoErrorType_SpaceAroundComma,
   CBoErrorType_SpaceAroundSemicolon,
+  CBoErrorType_SpaceAroundOperator,
   CBoErrorType_SeveralBlankLine,
   CBoErrorType_NoCurlyBraceAtHead,
   CBoErrorType_NoCurlyBraceAtTail,
@@ -103,6 +105,7 @@ const char* cboErrorTypeStr[] = {
   "No empty line after closing curly brace",
   "No space after comma, or space before comma",
   "No space after semicolon, or space before semicolon",
+  "No space around arythmetic/boolean operator",
   "Several consecutive blank lines",
   "Unbalanced curly brace at head of line",
   "Unbalanced curly brace at tail of line",
@@ -230,6 +233,13 @@ bool CBoFileCheckSpaceAroundSemicolon(
   CBoFile* const that,
   CBo* const cbo);
 
+// Check there is a space around arythmetic/boolean operators
+// in lines of the CBoFile 'that' with the CBo 'cbo'
+// Return true if there was no problem, else false
+bool CBoFileCheckSpaceAroundOperator(
+  CBoFile* const that,
+  CBo* const cbo);
+
 // Check there is no opening curly brace on the head of lines of the
 // CBoFile 'that' with the CBo 'cbo'
 // Return true if there was no problem, else false
@@ -268,6 +278,10 @@ bool CBoFileCheckEmptyLineBeforeComment(
 // Function to check if a line is a comment
 // Return true if it's a comment, else false
 bool CBoLineIsComment(const CBoLine* const that);
+
+// Function to check if a line is a precompilation command
+// Return true if it's a comment, else false
+bool CBoLineIsPrecompilCmd(const CBoLine* const that);
 
 // Return the position of the first character different of space or tab
 // or 0 if the line is empty
@@ -1184,6 +1198,10 @@ bool CBoFileCheck(
         cbo);
     success &=
       CBoFileCheckSpaceAroundSemicolon(
+        that,
+        cbo);
+    success &=
+      CBoFileCheckSpaceAroundOperator(
         that,
         cbo);
     success &=
@@ -2268,6 +2286,236 @@ bool CBoFileCheckSpaceAroundSemicolon(
 
 }
 
+// Check there is a space around arythmetic/boolean operators
+// in lines of the CBoFile 'that' with the CBo 'cbo'
+// Return true if there was no problem, else false
+bool CBoFileCheckSpaceAroundOperator(
+  CBoFile* const that,
+  CBo* const cbo) {
+
+#if BUILDMODE == 0
+  if (that == NULL) {
+
+    CBoErr->_type = PBErrTypeNullPointer;
+    sprintf(CBoErr->_msg, "'that' is null");
+    PBErrCatch(CBoErr);
+
+  }
+
+  if (cbo == NULL) {
+
+    CBoErr->_type = PBErrTypeNullPointer;
+    sprintf(CBoErr->_msg, "'cbo' is null");
+    PBErrCatch(CBoErr);
+
+  }
+
+#endif
+
+  // Declare a variable to memorize the success
+  bool success = true;
+
+  // Create a progress bar
+  ProgBarTxt progBar = ProgBarTxtCreateStatic();
+
+  // Declare a variable to memorize the operators
+  // TODO Exclude '*' and '&' due to complication when used as
+  // pointer operator
+  // TODO better rule for '-' also due to complication when used
+  // as pointer operator
+  char* operators = "+-/|";
+
+  // If the file is not empty
+  if (GSetNbElem(&(that->lines)) > 0) {
+
+    // Declare an iterator on the lines
+    GSetIterForward iter =
+      GSetIterForwardCreateStatic(&(that->lines));
+
+    // Loop on the lines
+    unsigned int iLine = 0;
+    do {
+
+      // Update and display the ProgBar
+      ProgBarTxtSet(
+        &progBar,
+        (float)iLine / (float)GSetNbElem(&(that->lines)));
+      fprintf(
+        cbo->stream,
+        "CheckSpaceAroundOperator %s\r",
+        ProgBarTxtGet(&progBar));
+      fflush(cbo->stream);
+
+      // Get the line
+      CBoLine* line = GSetIterGet(&iter);
+
+      // Get the length of the line
+      unsigned int length = CBoLineGetLength(line);
+
+      // If the line is not a comment
+      if (CBoLineIsComment(line) == false &&
+          CBoLineIsPrecompilCmd(line) == false) {
+
+        // Declare two flags to memorize the strings in the code
+        bool flagQuote = false;
+        bool flagDoubleQuote = false;
+
+        // Loop on the char of the line
+        for (unsigned int iChar = 0;
+             iChar < length;
+             ++iChar) {
+
+          if (line->str[iChar] == '\'') {
+
+            if (flagDoubleQuote == false) {
+
+              flagQuote = !flagQuote;
+
+            }
+
+          } else if (line->str[iChar] == '"') {
+
+            if (flagQuote == false) {
+
+              flagDoubleQuote = !flagDoubleQuote;
+
+            }
+
+          }
+
+          // Search for the character in the possible operators
+          char* ptr =
+            strchr(
+              operators,
+              line->str[iChar]);
+
+          // If the char is an operator
+          if (flagQuote == false &&
+              flagDoubleQuote == false &&
+              ptr != NULL) {
+
+            // If there is not the needed space before the operator
+            if (line->str[iChar] != '-' &&
+                iChar > 0 &&
+                line->str[iChar - 1] != ' ' &&
+                line->str[iChar - 1] != line->str[iChar] &&
+                line->str[iChar + 1] != line->str[iChar]) {
+
+              // Update the success flag
+              success = false;
+
+              // Create the error
+              CBoError* error =
+                CBoErrorCreate(
+                  that,
+                  line,
+                  iLine + 1,
+                  CBoErrorType_SpaceAroundOperator);
+
+              // Add the error to the file
+              CBoFileAddError(
+                that,
+                error);
+
+              // Skip the end of the line
+              iChar = length;
+
+            // If there is not the needed space after the operator '-'
+            } else if (line->str[iChar] == '-' &&
+                       line->str[iChar + 1] != ' ' &&
+                       line->str[iChar + 1] != line->str[iChar] &&
+                       line->str[iChar + 1] != '=' &&
+                       line->str[iChar + 1] < '0' &&
+                       line->str[iChar + 1] > '9' &&
+                       line->str[iChar + 1] != '>') {
+
+              // Update the success flag
+              success = false;
+
+              // Create the error
+              CBoError* error =
+                CBoErrorCreate(
+                  that,
+                  line,
+                  iLine + 1,
+                  CBoErrorType_SpaceAroundOperator);
+
+              // Add the error to the file
+              CBoFileAddError(
+                that,
+                error);
+
+              // Skip the end of the line
+              iChar = length;
+
+            // If there is not the needed space after the operator
+            // other than '-'
+            } else if (line->str[iChar] != '-' &&
+                       iChar < length - 1 &&
+                       line->str[iChar + 1] != ' ' &&
+                       line->str[iChar + 1] != line->str[iChar] &&
+                       line->str[iChar + 1] != '=' &&
+                       line->str[iChar - 1] != line->str[iChar]) {
+
+              // Update the success flag
+              success = false;
+
+              // Create the error
+              CBoError* error =
+                CBoErrorCreate(
+                  that,
+                  line,
+                  iLine + 1,
+                  CBoErrorType_SpaceAroundOperator);
+
+              // Add the error to the file
+              CBoFileAddError(
+                that,
+                error);
+
+              // Skip the end of the line
+              iChar = length;
+
+            }
+
+          }
+
+        }
+
+      }
+
+      ++iLine;
+
+    } while (GSetIterStep(&iter));
+
+    // Update and display the ProgBar
+    ProgBarTxtSet(
+      &progBar,
+      1.0);
+    fprintf(
+      cbo->stream,
+      "CheckSpaceAroundOperator %s",
+      ProgBarTxtGet(&progBar));
+    if (success == true) {
+
+      fprintf(
+        cbo->stream,
+        " OK");
+
+    }
+
+    fprintf(
+      cbo->stream,
+      "\n");
+    fflush(cbo->stream);
+
+  }
+
+  // Return the successfull code
+  return success;
+
+}
+
 // Check there is no opening curly brace on the head without its
 // closing curly brace on the same line of lines of the
 // CBoFile 'that' with the CBo 'cbo'
@@ -2992,6 +3240,40 @@ bool CBoLineIsComment(const CBoLine* const that) {
   } else {
 
     // The line is not a comment
+    return false;
+
+  }
+
+}
+
+// Function to check if a line is a precompilation command
+// Return true if it's a comment, else false
+bool CBoLineIsPrecompilCmd(const CBoLine* const that) {
+
+#if BUILDMODE == 0
+  if (that == NULL) {
+
+    CBoErr->_type = PBErrTypeNullPointer;
+    sprintf(CBoErr->_msg, "'that' is null");
+    PBErrCatch(CBoErr);
+
+  }
+
+#endif
+
+  // Get the position of the head of the line
+  unsigned int posHead = CBoLineGetPosHead(that);
+
+  // If the line starts with '#'
+  if (that->str[posHead] == '#') {
+
+    // The line is a precompiler command
+    return true;
+
+  // Else, the line doesn't start with '#'
+  } else {
+
+    // The line is not a precompiler command
     return false;
 
   }
