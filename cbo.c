@@ -73,9 +73,6 @@ typedef struct CBoError {
 
 } CBoError;
 
-// ================ Functions declaration ====================
-
-
 // ================= Global variables ===================
 
 // Label for the file types
@@ -91,7 +88,7 @@ const char* cboFileTypeStr[] = {
 const char* cboErrorTypeStr[] = {
 
   "Line too long",
-  "Trailing space(s)",
+  "Trailing space(s) or tab(s)",
   "No empty line before closing curly brace",
   "No empty line after opening curly brace",
   "No empty line after closing curly brace",
@@ -389,7 +386,7 @@ unsigned int CBoGetNbFilesWithError(const CBo* const that) {
 #endif
 
   return GSetNbElem(&(that->filesWithError));
-  
+
 }
 
 // Function to get the total number of errors in the CBo 'that'
@@ -428,7 +425,7 @@ unsigned int CBoGetNbErrors(const CBo* const that) {
 
   // Return the number of errors
   return nb;
-  
+
 }
 
 // Check the files of the CBo 'that' and print result on
@@ -540,7 +537,7 @@ bool CBoCheckAllFiles(
 
         // Display the errors of the file
         CBoFilePrintErrors(
-          file, 
+          file,
           stream);
 
         // Add it to the list of files with errors
@@ -742,7 +739,6 @@ unsigned int CBoFileGetNbError(const CBoFile* const that) {
 
 }
 
-
 // Function to free the memory used by the CBoFile 'that'
 void CBoFileFree(CBoFile** const that) {
 
@@ -755,6 +751,7 @@ void CBoFileFree(CBoFile** const that) {
     CBoLineFree(&line);
 
   }
+
   // Free the errors
   while (GSetNbElem(&((*that)->errors)) > 0) {
 
@@ -827,16 +824,20 @@ void CBoFilePrintErrors(
 
   // If there are errors
   if (GSetNbElem(&(that->errors)) > 0) {
+
     // Loop on errors
     GSetIterForward iter = GSetIterForwardCreateStatic(&(that->errors));
     do {
+
       // Get the error
       CBoError* error = GSetIterGet(&iter);
       // Print the error
       CBoErrorPrint(
         error,
         stream);
+
     } while(GSetIterStep(&iter));
+
   }
 
   }
@@ -939,7 +940,6 @@ CBoError* CBoErrorCreate(
 
 }
 
-
 // Function to free the memory used by the CBoError 'that'
 void CBoErrorFree(CBoError** const that) {
 
@@ -998,7 +998,7 @@ void CBoErrorPrint(
   fprintf(
     stream,
     errLine,
-    that->line);
+    that->line->str);
   fprintf(
     stream,
     "\n");
@@ -1165,26 +1165,18 @@ bool CBoFileCheckLineLength(
         // Update the success flag
         success = false;
 
-        // Display an error message
-        char* errMsg =
-          SGRString(
-            SGR_ColorFG(255, 0, 0, "%s:%d Line too long."));
-        char* errLine =
-          SGRString(
-            SGR_ColorBG(50, 50, 50, "%s"));
-        printf("\n");
-        printf(
-          errMsg,
-          that->filePath,
-          iLine + 1);
-        printf("\n");
-        printf(
-          errLine,
-          line->str);
-        printf("\n");
-        free(errMsg);
-        free(errLine);
-        fflush(stdout);
+        // Create the error
+        CBoError* error =
+          CBoErrorCreate(
+            that,
+            line,
+            iLine + 1,
+            CBoErrorType_LineLength);
+
+        // Add the error to the file
+        CBoFileAddError(
+          that,
+          error);
 
       }
 
@@ -1279,26 +1271,18 @@ bool CBoFileCheckTrailingSpace(
         // Update the success flag
         success = false;
 
-        // Display an error message
-        char* errMsg =
-          SGRString(
-            SGR_ColorFG(255, 0, 0, "%s:%d Trailing space(s) or tab(s)."));
-        char* errLine =
-          SGRString(
-            SGR_ColorBG(50, 50, 50, "%s"));
-        printf("\n");
-        printf(
-          errMsg,
-          that->filePath,
-          iLine + 1);
-        printf("\n");
-        printf(
-          errLine,
-          line->str);
-        printf("\n");
-        free(errMsg);
-        free(errLine);
-        fflush(stdout);
+        // Create the error
+        CBoError* error =
+          CBoErrorCreate(
+            that,
+            line,
+            iLine + 1,
+            CBoErrorType_TrailingSpace);
+
+        // Add the error to the file
+        CBoFileAddError(
+          that,
+          error);
 
       }
 
@@ -1404,31 +1388,18 @@ bool CBoFileCheckEmptyLineBeforeClosingCurlyBrace(
         // Update the success flag
         success = false;
 
-        // Display an error message
-        char* errMsg =
-          SGRString(
-            SGR_ColorFG(255, 0, 0,
-              "%s:%d Missing empty line before closing curly brace."));
-        char* errLine =
-          SGRString(
-            SGR_ColorBG(50, 50, 50, "%s"));
-        printf("\n");
-        printf(
-          errMsg,
-          that->filePath,
-          iLine + 1);
-        printf("\n");
-        printf(
-          errLine,
-          prevLine->str);
-        printf("\n");
-        printf(
-          errLine,
-          line->str);
-        printf("\n");
-        free(errMsg);
-        free(errLine);
-        fflush(stdout);
+        // Create the error
+        CBoError* error =
+          CBoErrorCreate(
+            that,
+            line,
+            iLine + 1,
+            CBoErrorType_EmptyLineBeforeClosingCurlyBrace);
+
+        // Add the error to the file
+        CBoFileAddError(
+          that,
+          error);
 
       }
 
@@ -1541,31 +1512,18 @@ bool CBoFileCheckEmptyLineAfterOpeningCurlyBrace(
         // Update the success flag
         success = false;
 
-        // Display an error message
-        char* errMsg =
-          SGRString(
-            SGR_ColorFG(255, 0, 0,
-              "%s:%d Missing empty line after opening curly brace."));
-        char* errLine =
-          SGRString(
-            SGR_ColorBG(50, 50, 50, "%s"));
-        printf("\n");
-        printf(
-          errMsg,
-          that->filePath,
-          iLine + 1);
-        printf("\n");
-        printf(
-          errLine,
-          prevLine->str);
-        printf("\n");
-        printf(
-          errLine,
-          line->str);
-        printf("\n");
-        free(errMsg);
-        free(errLine);
-        fflush(stdout);
+        // Create the error
+        CBoError* error =
+          CBoErrorCreate(
+            that,
+            line,
+            iLine + 1,
+            CBoErrorType_EmptyLineAfterOpeningCurlyBrace);
+
+        // Add the error to the file
+        CBoFileAddError(
+          that,
+          error);
 
       }
 
@@ -1672,31 +1630,18 @@ bool CBoFileCheckEmptyLineAfterClosingCurlyBrace(
         // Update the success flag
         success = false;
 
-        // Display an error message
-        char* errMsg =
-          SGRString(
-            SGR_ColorFG(255, 0, 0,
-              "%s:%d Missing empty line after closing curly brace."));
-        char* errLine =
-          SGRString(
-            SGR_ColorBG(50, 50, 50, "%s"));
-        printf("\n");
-        printf(
-          errMsg,
-          that->filePath,
-          iLine + 1);
-        printf("\n");
-        printf(
-          errLine,
-          prevLine->str);
-        printf("\n");
-        printf(
-          errLine,
-          line->str);
-        printf("\n");
-        free(errMsg);
-        free(errLine);
-        fflush(stdout);
+        // Create the error
+        CBoError* error =
+          CBoErrorCreate(
+            that,
+            line,
+            iLine + 1,
+            CBoErrorType_EmptyLineAfterClosingCurlyBrace);
+
+        // Add the error to the file
+        CBoFileAddError(
+          that,
+          error);
 
       }
 
@@ -1801,19 +1746,18 @@ bool CBoFileCheckSeveralBlankLines(
         // Update the success flag
         success = false;
 
-        // Display an error message
-        char* errMsg =
-          SGRString(
-            SGR_ColorFG(255, 0, 0,
-              "%s:%d Several blank lines."));
-        printf("\n");
-        printf(
-          errMsg,
-          that->filePath,
-          iLine + 1);
-        printf("\n");
-        free(errMsg);
-        fflush(stdout);
+        // Create the error
+        CBoError* error =
+          CBoErrorCreate(
+            that,
+            line,
+            iLine + 1,
+            CBoErrorType_SeveralBlankLine);
+
+        // Add the error to the file
+        CBoFileAddError(
+          that,
+          error);
 
       }
 
@@ -1944,27 +1888,18 @@ bool CBoFileCheckSpaceAroundComma(
             // Update the success flag
             success = false;
 
-            // Display an error message
-            char* errMsg =
-              SGRString(
-                SGR_ColorFG(255, 0, 0,
-                  "%s:%d Space before comma."));
-            char* errLine =
-              SGRString(
-                SGR_ColorBG(50, 50, 50, "%s"));
-            printf("\n");
-            printf(
-              errMsg,
-              that->filePath,
-              iLine + 1);
-            printf("\n");
-            printf(
-              errLine,
-              line->str);
-            printf("\n");
-            free(errMsg);
-            free(errLine);
-            fflush(stdout);
+            // Create the error
+            CBoError* error =
+              CBoErrorCreate(
+                that,
+                line,
+                iLine + 1,
+                CBoErrorType_SpaceAroundComma);
+
+            // Add the error to the file
+            CBoFileAddError(
+              that,
+              error);
 
             // Skip the end of the line
             iChar = length;
@@ -1979,27 +1914,18 @@ bool CBoFileCheckSpaceAroundComma(
             // Update the success flag
             success = false;
 
-            // Display an error message
-            char* errMsg =
-              SGRString(
-                SGR_ColorFG(255, 0, 0,
-                  "%s:%d No space after comma."));
-            char* errLine =
-              SGRString(
-                SGR_ColorBG(50, 50, 50, "%s"));
-            printf("\n");
-            printf(
-              errMsg,
-              that->filePath,
-              iLine + 1);
-            printf("\n");
-            printf(
-              errLine,
-              line->str);
-            printf("\n");
-            free(errMsg);
-            free(errLine);
-            fflush(stdout);
+            // Create the error
+            CBoError* error =
+              CBoErrorCreate(
+                that,
+                line,
+                iLine + 1,
+                CBoErrorType_SpaceAroundComma);
+
+            // Add the error to the file
+            CBoFileAddError(
+              that,
+              error);
 
             // Skip the end of the line
             iChar = length;
@@ -2133,27 +2059,18 @@ bool CBoFileCheckSpaceAroundSemicolon(
           // Update the success flag
           success = false;
 
-          // Display an error message
-          char* errMsg =
-            SGRString(
-              SGR_ColorFG(255, 0, 0,
-                "%s:%d Space before semicolon."));
-          char* errLine =
-            SGRString(
-              SGR_ColorBG(50, 50, 50, "%s"));
-          printf("\n");
-          printf(
-            errMsg,
-            that->filePath,
-            iLine + 1);
-          printf("\n");
-          printf(
-            errLine,
-            line->str);
-          printf("\n");
-          free(errMsg);
-          free(errLine);
-          fflush(stdout);
+          // Create the error
+          CBoError* error =
+            CBoErrorCreate(
+              that,
+              line,
+              iLine + 1,
+              CBoErrorType_SpaceAroundSemicolon);
+
+          // Add the error to the file
+          CBoFileAddError(
+            that,
+            error);
 
           // Skip the end of the line
           iChar = length;
@@ -2264,28 +2181,18 @@ bool CBoFileCheckNoCurlyBraceAtHead(
           // Update the success flag
           success = false;
 
-          // Display an error message
-          char* errMsg =
-            SGRString(
-              SGR_ColorFG(255, 0, 0,
-                "%s:%d Opening curly brace at head of line."
-                ""));
-          char* errLine =
-            SGRString(
-              SGR_ColorBG(50, 50, 50, "%s"));
-          printf("\n");
-          printf(
-            errMsg,
-            that->filePath,
-            iLine + 1);
-          printf("\n");
-          printf(
-            errLine,
-            line->str);
-          printf("\n");
-          free(errMsg);
-          free(errLine);
-          fflush(stdout);
+          // Create the error
+          CBoError* error =
+            CBoErrorCreate(
+              that,
+              line,
+              iLine + 1,
+              CBoErrorType_NoCurlyBraceAtHead);
+
+          // Add the error to the file
+          CBoFileAddError(
+            that,
+            error);
 
         }
 
@@ -2401,27 +2308,18 @@ bool CBoFileCheckNoCurlyBraceAtTail(
           // Update the success flag
           success = false;
 
-          // Display an error message
-          char* errMsg =
-            SGRString(
-              SGR_ColorFG(255, 0, 0,
-                "%s:%d Closing curly brace at tail of line."));
-          char* errLine =
-            SGRString(
-              SGR_ColorBG(50, 50, 50, "%s"));
-          printf("\n");
-          printf(
-            errMsg,
-            that->filePath,
-            iLine + 1);
-          printf("\n");
-          printf(
-            errLine,
-            line->str);
-          printf("\n");
-          free(errMsg);
-          free(errLine);
-          fflush(stdout);
+          // Create the error
+          CBoError* error =
+            CBoErrorCreate(
+              that,
+              line,
+              iLine + 1,
+              CBoErrorType_NoCurlyBraceAtTail);
+
+          // Add the error to the file
+          CBoFileAddError(
+            that,
+            error);
 
         }
 

@@ -29,7 +29,7 @@ int main(
         "w");
 
     // Check all the files
-    success = 
+    success =
       CBoCheckAllFiles(
         cbo,
         stream);
