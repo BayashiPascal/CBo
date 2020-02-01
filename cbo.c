@@ -57,6 +57,7 @@ typedef enum CBoErrorType {
   CBoErrorType_NoCurlyBraceAtHead,
   CBoErrorType_NoCurlyBraceAtTail,
   CBoErrorType_CharBeforeDot,
+  CBoErrorType_SpaceBeforeOpeningCurlyBrace,
 
 } CBoErrorType;
 
@@ -99,6 +100,7 @@ const char* cboErrorTypeStr[] = {
   "Unbalanced curly brace at head of line",
   "Unbalanced curly brace at tail of line",
   "'.' must be after [a-zA-Z0-9], or be at head of line",
+  "No space before opening curly brace",
 
 };
 
@@ -241,6 +243,13 @@ bool CBoFileCheckCharBeforeDot(
   CBoFile* const that,
   CBo* const cbo);
 
+// Check there is a space or opening curly brace before opening curly
+// braces on the lines of the CBoFile 'that' with the CBo 'cbo'
+// Return true if there was no problem, else false
+bool CBoFileCheckSpaceBeforeOpenCurlyBrace(
+  CBoFile* const that,
+  CBo* const cbo);
+
 // Function to check if a line is a comment
 // Return true if it's a comment, else false
 bool CBoLineIsComment(const CBoLine* const that);
@@ -289,7 +298,7 @@ CBo* CBoCreate(void) {
   that->flagListFileError = false;
 
   // By default, set the output stream to stdout
-  that->stream = 
+  that->stream =
     fopen(
       "/dev/stdout",
       "w");
@@ -1174,6 +1183,10 @@ bool CBoFileCheck(
       CBoFileCheckCharBeforeDot(
         that,
         cbo);
+    success &=
+      CBoFileCheckSpaceBeforeOpenCurlyBrace(
+        that,
+        cbo);
 
   }
 
@@ -1936,7 +1949,7 @@ bool CBoFileCheckSpaceAroundComma(
   ProgBarTxt progBar = ProgBarTxtCreateStatic();
 
   // If the file is not empty
-  if (GSetNbElem(&(that->lines)) > 1) {
+  if (GSetNbElem(&(that->lines)) > 0) {
 
     // Declare an iterator on the lines
     GSetIterForward iter =
@@ -2116,7 +2129,7 @@ bool CBoFileCheckSpaceAroundSemicolon(
   ProgBarTxt progBar = ProgBarTxtCreateStatic();
 
   // If the file is not empty
-  if (GSetNbElem(&(that->lines)) > 1) {
+  if (GSetNbElem(&(that->lines)) > 0) {
 
     // Declare an iterator on the lines
     GSetIterForward iter =
@@ -2266,7 +2279,7 @@ bool CBoFileCheckNoCurlyBraceAtHead(
   ProgBarTxt progBar = ProgBarTxtCreateStatic();
 
   // If the file is not empty
-  if (GSetNbElem(&(that->lines)) > 1) {
+  if (GSetNbElem(&(that->lines)) > 0) {
 
     // Declare an iterator on the lines
     GSetIterForward iter =
@@ -2390,7 +2403,7 @@ bool CBoFileCheckNoCurlyBraceAtTail(
   ProgBarTxt progBar = ProgBarTxtCreateStatic();
 
   // If the file is not empty
-  if (GSetNbElem(&(that->lines)) > 1) {
+  if (GSetNbElem(&(that->lines)) > 0) {
 
     // Declare an iterator on the lines
     GSetIterForward iter =
@@ -2523,7 +2536,7 @@ bool CBoFileCheckCharBeforeDot(
   ProgBarTxt progBar = ProgBarTxtCreateStatic();
 
   // If the file is not empty
-  if (GSetNbElem(&(that->lines)) > 1) {
+  if (GSetNbElem(&(that->lines)) > 0) {
 
     // Declare an iterator on the lines
     GSetIterForward iter =
@@ -2632,6 +2645,161 @@ bool CBoFileCheckCharBeforeDot(
     fprintf(
       cbo->stream,
       "CheckCharBeforeDot %s",
+      ProgBarTxtGet(&progBar));
+    if (success == true) {
+
+      fprintf(
+        cbo->stream,
+        " OK");
+
+    }
+
+    fprintf(
+      cbo->stream,
+      "\n");
+    fflush(cbo->stream);
+
+  }
+
+  // Return the successfull code
+  return success;
+
+}
+
+// Check there is a space or opening curly brace before opening curly
+// braces on the lines of the CBoFile 'that' with the CBo 'cbo'
+// Return true if there was no problem, else false
+bool CBoFileCheckSpaceBeforeOpenCurlyBrace(
+  CBoFile* const that,
+  CBo* const cbo) {
+
+#if BUILDMODE == 0
+  if (that == NULL) {
+
+    CBoErr->_type = PBErrTypeNullPointer;
+    sprintf(CBoErr->_msg, "'that' is null");
+    PBErrCatch(CBoErr);
+
+  }
+
+  if (cbo == NULL) {
+
+    CBoErr->_type = PBErrTypeNullPointer;
+    sprintf(CBoErr->_msg, "'cbo' is null");
+    PBErrCatch(CBoErr);
+
+  }
+
+#endif
+
+  // Declare a variable to memorize the success
+  bool success = true;
+
+  // Create a progress bar
+  ProgBarTxt progBar = ProgBarTxtCreateStatic();
+
+  // If the file is not empty
+  if (GSetNbElem(&(that->lines)) > 0) {
+
+    // Declare an iterator on the lines
+    GSetIterForward iter =
+      GSetIterForwardCreateStatic(&(that->lines));
+
+    // Loop on the lines
+    unsigned int iLine = 0;
+    do {
+
+      // Update and display the ProgBar
+      ProgBarTxtSet(
+        &progBar,
+        (float)iLine / (float)GSetNbElem(&(that->lines)));
+      fprintf(
+        cbo->stream,
+        "CheckSpaceBeforeOpenCurlyBrace %s\r",
+        ProgBarTxtGet(&progBar));
+      fflush(cbo->stream);
+
+      // Get the line
+      CBoLine* line = GSetIterGet(&iter);
+
+      // If the line is not a comment
+      if (CBoLineIsComment(line) == false) {
+
+        // Get the length of the line
+        unsigned int length = CBoLineGetLength(line);
+
+        // Declare two variables to manage strings
+        bool flagQuote = false;
+        bool flagDoubleQuote = false;
+
+        // Loop on the char in the line
+        for (unsigned int iChar = 0;
+             iChar < length;
+             ++iChar) {
+
+          if (line->str[iChar] == '\'') {
+
+            if (flagDoubleQuote == false) {
+
+              flagQuote = !flagQuote;
+
+            }
+
+          } else if (line->str[iChar] == '"') {
+
+            if (flagQuote == false) {
+
+              flagDoubleQuote = !flagDoubleQuote;
+
+            }
+
+          }
+
+          // If the char is an opening curly brace and not preceded
+          // by another curly brace or space
+          if (line->str[iChar] == '{' &&
+              flagQuote == false &&
+              flagDoubleQuote == false &&
+              iChar > 0 &&
+              line->str[iChar - 1] != ' ' &&
+              line->str[iChar - 1] != '{') {
+
+            // Update the success flag
+            success = false;
+
+            // Create the error
+            CBoError* error =
+              CBoErrorCreate(
+                that,
+                line,
+                iLine + 1,
+                CBoErrorType_SpaceBeforeOpeningCurlyBrace);
+
+            // Add the error to the file
+            CBoFileAddError(
+              that,
+              error);
+
+            // Skip the end of the line
+            iChar = length;
+
+          }
+
+        }
+
+      }
+
+      ++iLine;
+
+    } while (GSetIterStep(&iter));
+
+    // Update and display the ProgBar
+    ProgBarTxtSet(
+      &progBar,
+      1.0);
+    fprintf(
+      cbo->stream,
+      "CheckSpaceBeforeOpenCurlyBrace %s",
       ProgBarTxtGet(&progBar));
     if (success == true) {
 
