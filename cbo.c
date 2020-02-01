@@ -56,6 +56,7 @@ typedef enum CBoErrorType {
   CBoErrorType_SeveralBlankLine,
   CBoErrorType_NoCurlyBraceAtHead,
   CBoErrorType_NoCurlyBraceAtTail,
+  CBoErrorType_CharBeforeDot,
 
 } CBoErrorType;
 
@@ -97,6 +98,7 @@ const char* cboErrorTypeStr[] = {
   "Several consecutive blank lines",
   "Unbalanced curly brace at head of line",
   "Unbalanced curly brace at tail of line",
+  "'.' must be after [a-zA-Z0-9], or be at head of line",
 
 };
 
@@ -229,6 +231,13 @@ bool CBoFileCheckNoCurlyBraceAtHead(
 // CBoFile 'that' with the CBo 'cbo'
 // Return true if there was no problem, else false
 bool CBoFileCheckNoCurlyBraceAtTail(
+  CBoFile* const that,
+  CBo* const cbo);
+
+// Check that '.' are surrounded by [a-zA-Z0-9] or are at head of line
+// on the lines of the CBoFile 'that' with the CBo 'cbo'
+// Return true if there was no problem, else false
+bool CBoFileCheckCharBeforeDot(
   CBoFile* const that,
   CBo* const cbo);
 
@@ -1094,6 +1103,10 @@ bool CBoFileCheck(
         cbo);
     success &=
       CBoFileCheckNoCurlyBraceAtTail(
+        that,
+        cbo);
+    success &=
+      CBoFileCheckCharBeforeDot(
         that,
         cbo);
 
@@ -2335,6 +2348,163 @@ bool CBoFileCheckNoCurlyBraceAtTail(
       1.0);
     printf(
       "CheckNoCurlyBraceAtTail %s",
+      ProgBarTxtGet(&progBar));
+    if (success == true) {
+
+      printf(" OK");
+
+    }
+
+    printf("\n");
+    fflush(stdout);
+
+  }
+
+  // Return the successfull code
+  return success;
+
+}
+
+// Check that '.' are surrounded by [a-zA-Z0-9] or are at head of line
+// on the lines of the CBoFile 'that' with the CBo 'cbo'
+// Return true if there was no problem, else false
+bool CBoFileCheckCharBeforeDot(
+  CBoFile* const that,
+  CBo* const cbo) {
+
+#if BUILDMODE == 0
+  if (that == NULL) {
+
+    CBoErr->_type = PBErrTypeNullPointer;
+    sprintf(CBoErr->_msg, "'that' is null");
+    PBErrCatch(CBoErr);
+
+  }
+
+  if (cbo == NULL) {
+
+    CBoErr->_type = PBErrTypeNullPointer;
+    sprintf(CBoErr->_msg, "'cbo' is null");
+    PBErrCatch(CBoErr);
+
+  }
+
+#endif
+
+  // Declare a variable to memorize the success
+  bool success = true;
+
+  // Create a progress bar
+  ProgBarTxt progBar = ProgBarTxtCreateStatic();
+
+  // If the file is not empty
+  if (GSetNbElem(&(that->lines)) > 1) {
+
+    // Declare an iterator on the lines
+    GSetIterForward iter =
+      GSetIterForwardCreateStatic(&(that->lines));
+
+    // Loop on the lines
+    unsigned int iLine = 0;
+    do {
+
+      // Update and display the ProgBar
+      ProgBarTxtSet(
+        &progBar,
+        (float)iLine / (float)GSetNbElem(&(that->lines)));
+      printf(
+        "CheckCharBeforeDot %s\r",
+        ProgBarTxtGet(&progBar));
+      fflush(stdout);
+
+      // Get the line
+      CBoLine* line = GSetIterGet(&iter);
+
+      // If the line is not a comment
+      if (CBoLineIsComment(line) == false) {
+
+        // Get the position of the head of the line
+        unsigned int posHead = CBoLineGetPosHead(line);
+
+        // Get the length of the line
+        unsigned int length = CBoLineGetLength(line);
+
+        // Declare two variables to manage strings
+        bool flagQuote = false;
+        bool flagDoubleQuote = false;
+
+        // Loop on the char in the line
+        for (unsigned int iChar = 0;
+             iChar < length;
+             ++iChar) {
+
+          if (line->str[iChar] == '\'') {
+
+            if (flagDoubleQuote == false) {
+
+              flagQuote = !flagQuote;
+
+            }
+
+          } else if (line->str[iChar] == '"') {
+
+            if (flagQuote == false) {
+
+              flagDoubleQuote = !flagDoubleQuote;
+
+            }
+
+          }
+
+          // If the dot is not at the head of the line and
+          // the char before the '.' is invalid
+          if (line->str[iChar] == '.' &&
+              flagQuote == false &&
+              flagDoubleQuote == false &&
+              (iChar == 0 ||
+               (iChar != posHead &&
+                !(line->str[iChar - 1] >= 'a' &&
+                  line->str[iChar - 1] <= 'z') &&
+                !(line->str[iChar - 1] >= 'A' &&
+                  line->str[iChar - 1] <= 'Z') &&
+                !(line->str[iChar - 1] >= '0' &&
+                  line->str[iChar - 1] <= '9')))) {
+
+            // Update the success flag
+            success = false;
+
+            // Create the error
+            CBoError* error =
+              CBoErrorCreate(
+                that,
+                line,
+                iLine + 1,
+                CBoErrorType_CharBeforeDot);
+
+            // Add the error to the file
+            CBoFileAddError(
+              that,
+              error);
+
+            // Skip the end of the line
+            iChar = length;
+
+          }
+
+        }
+
+      }
+
+      ++iLine;
+
+    } while (GSetIterStep(&iter));
+
+    // Update and display the ProgBar
+    ProgBarTxtSet(
+      &progBar,
+      1.0);
+    printf(
+      "CheckCharBeforeDot %s",
       ProgBarTxtGet(&progBar));
     if (success == true) {
 
