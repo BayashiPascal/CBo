@@ -34,10 +34,13 @@ typedef struct CBoFile {
 
   // Pointer to the file path
   const char* filePath;
+
   // Type of the file
   CBoFileType type;
+
   // Set of lines
   GSet lines;
+
   // Set of CBoError
   GSet errors;
 
@@ -58,6 +61,7 @@ typedef enum CBoErrorType {
   CBoErrorType_NoCurlyBraceAtTail,
   CBoErrorType_CharBeforeDot,
   CBoErrorType_SpaceBeforeOpeningCurlyBrace,
+  CBoErrorType_EmptyLineBeforeComment,
 
 } CBoErrorType;
 
@@ -66,10 +70,13 @@ typedef struct CBoError {
 
   // Pointer to the file containing the error
   CBoFile* file;
+
   // Line of the error
   CBoLine* line;
+
   // Index of the line of the error
   unsigned int iLine;
+
   // Type of the error
   CBoErrorType type;
 
@@ -101,6 +108,7 @@ const char* cboErrorTypeStr[] = {
   "Unbalanced curly brace at tail of line",
   "'.' must be after [a-zA-Z0-9], or be at head of line",
   "No space before opening curly brace",
+  "No empty line before comment",
 
 };
 
@@ -250,6 +258,13 @@ bool CBoFileCheckSpaceBeforeOpenCurlyBrace(
   CBoFile* const that,
   CBo* const cbo);
 
+// Check there is an empty line before comments of the
+// CBoFile 'that' with the CBo 'cbo'
+// Return true if there was no problem, else false
+bool CBoFileCheckEmptyLineBeforeComment(
+  CBoFile* const that,
+  CBo* const cbo);
+
 // Function to check if a line is a comment
 // Return true if it's a comment, else false
 bool CBoLineIsComment(const CBoLine* const that);
@@ -381,7 +396,9 @@ bool CBoProcessCmdLineArguments(
       // If the path is correct
       if (f != NULL) {
 
+        // Close the stream
         fclose(f);
+
         // Add the path to the list of files to check
         GSetAppend(
           &(that->filePaths),
@@ -647,6 +664,7 @@ CBoFile* CBoFileCreate(const char* const filePath) {
   }
 
 #endif
+
   // Create the new CBoFile
   CBoFile* that = (CBoFile*)malloc(sizeof(CBoFile));
 
@@ -905,6 +923,7 @@ void CBoFilePrintErrors(
 
       // Get the error
       CBoError* error = GSetIterGet(&iter);
+
       // Print the error
       CBoErrorPrint(
         error,
@@ -1185,6 +1204,10 @@ bool CBoFileCheck(
         cbo);
     success &=
       CBoFileCheckSpaceBeforeOpenCurlyBrace(
+        that,
+        cbo);
+    success &=
+      CBoFileCheckEmptyLineBeforeComment(
         that,
         cbo);
 
@@ -2800,6 +2823,126 @@ bool CBoFileCheckSpaceBeforeOpenCurlyBrace(
     fprintf(
       cbo->stream,
       "CheckSpaceBeforeOpenCurlyBrace %s",
+      ProgBarTxtGet(&progBar));
+    if (success == true) {
+
+      fprintf(
+        cbo->stream,
+        " OK");
+
+    }
+
+    fprintf(
+      cbo->stream,
+      "\n");
+    fflush(cbo->stream);
+
+  }
+
+  // Return the successfull code
+  return success;
+
+}
+
+// Check there is an empty line before comments of the
+// CBoFile 'that' with the CBo 'cbo'
+// Return true if there was no problem, else false
+bool CBoFileCheckEmptyLineBeforeComment(
+  CBoFile* const that,
+  CBo* const cbo) {
+
+#if BUILDMODE == 0
+  if (that == NULL) {
+
+    CBoErr->_type = PBErrTypeNullPointer;
+    sprintf(CBoErr->_msg, "'that' is null");
+    PBErrCatch(CBoErr);
+
+  }
+
+  if (cbo == NULL) {
+
+    CBoErr->_type = PBErrTypeNullPointer;
+    sprintf(CBoErr->_msg, "'cbo' is null");
+    PBErrCatch(CBoErr);
+
+  }
+
+#endif
+
+  // Declare a variable to memorize the success
+  bool success = true;
+
+  // Create a progress bar
+  ProgBarTxt progBar = ProgBarTxtCreateStatic();
+
+  // If the file is not empty
+  if (GSetNbElem(&(that->lines)) > 1) {
+
+    // Variable to memorize the previous non comment line
+    CBoLine* prevLine = NULL;
+
+    // Declare an iterator on the lines
+    GSetIterForward iter =
+      GSetIterForwardCreateStatic(&(that->lines));
+
+    // Loop on the lines
+    unsigned int iLine = 0;
+    do {
+
+      // Update and display the ProgBar
+      ProgBarTxtSet(
+        &progBar,
+        (float)iLine / (float)GSetNbElem(&(that->lines)));
+      fprintf(
+        cbo->stream,
+        "CheckEmptyLineBeforeComment %s\r",
+        ProgBarTxtGet(&progBar));
+      fflush(cbo->stream);
+
+      // Get the line
+      CBoLine* line = GSetIterGet(&iter);
+
+      // If the line is a comment and the previous line is not empty and
+      // not a comment
+      if (prevLine != NULL &&
+          CBoLineGetLength(prevLine) != 0 &&
+          CBoLineIsComment(prevLine) == false &&
+          CBoLineIsComment(line) == true) {
+
+        // Update the success flag
+        success = false;
+
+        // Create the error
+        CBoError* error =
+          CBoErrorCreate(
+            that,
+            line,
+            iLine + 1,
+            CBoErrorType_EmptyLineBeforeComment);
+
+        // Add the error to the file
+        CBoFileAddError(
+          that,
+          error);
+
+      }
+
+      // Update the previous line
+      prevLine = line;
+
+      // Move to the next line
+      ++iLine;
+
+    } while (GSetIterStep(&iter));
+
+    // Update and display the ProgBar
+    ProgBarTxtSet(
+      &progBar,
+      1.0);
+    fprintf(
+      cbo->stream,
+      "CheckEmptyLineBeforeComment %s",
       ProgBarTxtGet(&progBar));
     if (success == true) {
 

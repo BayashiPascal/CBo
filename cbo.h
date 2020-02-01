@@ -19,12 +19,16 @@ typedef struct CBo {
 
   // Set of path to the checked files
   GSetStr filePaths;
+
   // Set of CBoFile
   GSet files;
+
   // Set of CBoFile with error
   GSet filesWithError;
+
   // Stream on which the output is printed
   FILE* stream;
+
   // Flag to remember if we print only the list of files with errors
   bool flagListFileError;
 
