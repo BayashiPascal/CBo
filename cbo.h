@@ -37,7 +37,7 @@ typedef struct CBo {
 // ================ Functions declaration ====================
 
 // Function to create a new CBo,
-// Return a pointer toward the new CBo
+// Return a pointer to the new CBo
 CBo* CBoCreate(void);
 
 // Function to free the memory used by the CBo 'that'
@@ -46,8 +46,8 @@ void CBoFree(CBo** const that);
 // Process the arguments from the command line
 // Return true if the arguments were correct, else false
 bool CBoProcessCmdLineArguments(
-          CBo* const that,
-           const int argc,
+  CBo* const that,
+  const int argc,
   const char** const argv);
 
 // Check the files of the CBo 'that'

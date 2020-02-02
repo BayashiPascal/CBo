@@ -32,8 +32,9 @@ int main(
 
       // If the user hasn't requested to display only the list of
       // file(s) with error(s)
-      if (CBoGetNbFiles(cbo) > 0 &&
-          cbo->flagListFileError == false) {
+      if (
+        CBoGetNbFiles(cbo) > 0 &&
+        cbo->flagListFileError == false) {
 
         fprintf(
           cbo->stream,

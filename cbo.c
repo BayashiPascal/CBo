@@ -11,6 +11,9 @@
 // Max length of a line
 #define CBOLINE_MAX_LENGTH 79
 
+// Size of one indent level
+#define CBOLINE_INDENT_SIZE 2
+
 // ================= Data structures ===================
 
 // Structure to memorize one line of a file
@@ -18,6 +21,9 @@ typedef struct CBoLine {
 
   // Original line
   char* str;
+
+  // Correct indent level
+  unsigned int indent;
 
 } CBoLine;
 
@@ -64,6 +70,7 @@ typedef enum CBoErrorType {
   CBoErrorType_CharBeforeDot,
   CBoErrorType_SpaceBeforeOpeningCurlyBrace,
   CBoErrorType_EmptyLineBeforeComment,
+  CBoErrorType_IndentLevel,
 
 } CBoErrorType;
 
@@ -112,17 +119,22 @@ const char* cboErrorTypeStr[] = {
   "'.' must be after [a-zA-Z0-9], or be at head of line",
   "No space before opening curly brace",
   "No empty line before comment",
+  "Indent level is incorrect",
 
 };
 
 // ================ Functions declaration ==================
 
 // Function to create a new CBoFile from its file path,
-// Return a pointer toward the new CBoFile
+// Return a pointer to the new CBoFile
 CBoFile* CBoFileCreate(const char* const filePath);
 
 // Function to free the memory used by the CBoFile 'that'
 void CBoFileFree(CBoFile** const that);
+
+// Calculate the proper indentation level of each line of the
+// CBoFile 'that'
+void CBoFileUpdateIndentLvlLines(CBoFile* const that);
 
 // Function to add the CBoError 'error' to the CBoFile 'that'
 void CBoFileAddError(
@@ -135,7 +147,7 @@ void CBoFilePrintErrors(
   FILE* stream);
 
 // Function to create a new CBoLine from its content,
-// Return a pointer toward the new CBoLine
+// Return a pointer to the new CBoLine
 CBoLine* CBoLineCreate(const char* const str);
 
 // Function to free the memory used by the CBoLine 'that'
@@ -150,7 +162,7 @@ unsigned int CBoLineGetPosLast(
 
 // Function to create a new CBoError from its file, line, index of line
 // and type
-// Return a pointer toward the new CBoError
+// Return a pointer to the new CBoError
 CBoError* CBoErrorCreate(
   CBoFile* const file,
   CBoLine* const line,
@@ -275,6 +287,13 @@ bool CBoFileCheckEmptyLineBeforeComment(
   CBoFile* const that,
   CBo* const cbo);
 
+// Check the ident level of the lines of the
+// CBoFile 'that' with the CBo 'cbo'
+// Return true if there was no problem, else false
+bool CBoFileCheckIndentLevel(
+  CBoFile* const that,
+  CBo* const cbo);
+
 // Function to check if a line is a comment
 // Return true if it's a comment, else false
 bool CBoLineIsComment(const CBoLine* const that);
@@ -314,7 +333,7 @@ unsigned int CBoLineGetPosLast(
 // ================ Functions implementation ==================
 
 // Function to create a new CBo,
-// Return a pointer toward the new CBo
+// Return a pointer to the new CBo
 CBo* CBoCreate(void) {
 
   // Allocate memory for the CBo
@@ -366,8 +385,8 @@ void CBoFree(CBo** const that) {
 // Process the arguments from the command line
 // Return true if the arguments were correct, else false
 bool CBoProcessCmdLineArguments(
-          CBo* const that,
-           const int argc,
+  CBo* const that,
+  const int argc,
   const char** const argv) {
 
 #if BUILDMODE == 0
@@ -382,9 +401,10 @@ bool CBoProcessCmdLineArguments(
 #endif
 
   // Loop on arguments
-  for (int iArg = 1;
-       iArg < argc;
-       ++iArg) {
+  for (
+    int iArg = 1;
+    iArg < argc;
+    ++iArg) {
 
     if (strcmp(argv[iArg], "-help") == 0) {
 
@@ -394,15 +414,15 @@ bool CBoProcessCmdLineArguments(
         "[-listFile] : print only the list of file(s) with error(s)\n");
       printf("\n");
 
+    // Else, if the argument is -listFile
     } else if (strcmp(argv[iArg], "-listFile") == 0) {
 
       // Update the flag
       that->flagListFileError = true;
 
+    // Else, any other arguments is considered to be a path
+    // to a file to check
     } else {
-
-      // Any other arguments is considered to be a path
-      // to a file to check
 
       // Try to open the file to check the path
       FILE* f = fopen(argv[iArg], "r");
@@ -665,7 +685,7 @@ bool CBoCheckAllFiles(CBo* const that) {
 }
 
 // Function to create a new CBoFile from its file path,
-// Return a pointer toward the new CBoFile
+// Return a pointer to the new CBoFile
 CBoFile* CBoFileCreate(const char* const filePath) {
 
 #if BUILDMODE == 0
@@ -704,20 +724,20 @@ CBoFile* CBoFileCreate(const char* const filePath) {
     char buffer[1000];
 
     // Loop on the lines of the file
-    while (!feof(fp) &&
-           ret != EOF) {
+    while (!feof(fp) && ret != EOF) {
 
       // Create a pointer on the char of the line
       char* ptr = buffer;
       *ptr = '\0';
 
-      // Loop one the char of the line until the end of the line or
+      // Loop on the char of the line until the end of the line or
       // an error occured or we reach the end of the file or the end
       // of the buffer
-      while (*ptr != '\n' &&
-             !feof(fp) &&
-             ret != EOF &&
-             ptr < buffer + 999) {
+      while (
+        *ptr != '\n' &&
+        !feof(fp) &&
+        ret != EOF &&
+        ptr < buffer + 999) {
 
         // Read one char
         ret =
@@ -728,8 +748,7 @@ CBoFile* CBoFileCreate(const char* const filePath) {
 
         // If we could read the character and it wasn't the end
         // of the line
-        if (ret != EOF &&
-            *ptr != '\n') {
+        if (ret != EOF && *ptr != '\n') {
 
           // Move to the next char
           ++ptr;
@@ -739,8 +758,7 @@ CBoFile* CBoFileCreate(const char* const filePath) {
       }
 
       // If there was an error
-      if ((!feof(fp) && ret == EOF) ||
-          ptr >= buffer + 999) {
+      if ((!feof(fp) && ret == EOF) || ptr >= buffer + 999) {
 
         ret = EOF;
 
@@ -771,8 +789,7 @@ CBoFile* CBoFileCreate(const char* const filePath) {
     }
 
     // If there has been an error
-    if (!feof(fp) &&
-        ret == EOF) {
+    if (!feof(fp) && ret == EOF) {
 
       CBoFileFree(&that);
 
@@ -782,6 +799,9 @@ CBoFile* CBoFileCreate(const char* const filePath) {
     fclose(fp);
 
   }
+
+  // Calculate the proper indentation level of each line of the file
+  CBoFileUpdateIndentLvlLines(that);
 
   // Return the new CBoFile
   return that;
@@ -872,6 +892,184 @@ void CBoFileFree(CBoFile** const that) {
 
 }
 
+// Calculate the proper indentation level of each line of the
+// CBoFile 'that'
+void CBoFileUpdateIndentLvlLines(CBoFile* const that) {
+
+#if BUILDMODE == 0
+  if (that == NULL) {
+
+    CBoErr->_type = PBErrTypeNullPointer;
+    sprintf(CBoErr->_msg, "'that' is null");
+    PBErrCatch(CBoErr);
+
+  }
+
+#endif
+
+  // Declare a variable to memorize the current indent level
+  unsigned int indent = 0;
+
+  // If the file is not empty
+  if (GSetNbElem(&(that->lines)) > 0) {
+
+    // Declare a flag to memorize the multiline lines
+    bool flagMultiline = false;
+
+    // Declare a flag to memorize the line inside parenthesis
+    bool flagInParenthesis = false;
+
+    // Declare flag to detect for (...) and case ...
+    bool flagFor = false;
+    bool flagCase = false;
+
+    // Loop on the lines of the file
+    GSetIterForward iter = GSetIterForwardCreateStatic(&(that->lines));
+    do {
+
+      // Get the line
+      CBoLine* line = GSetIterGet(&iter);
+
+      // Get the length of the line
+      unsigned int length = CBoLineGetLength(line);
+
+      // Get the position of the head of the line
+      unsigned int posHead = CBoLineGetPosHead(line);
+
+      // Check if we are on a for(...)
+      char* ptrFor = strstr(line->str, "for (");
+      if (ptrFor == line->str + posHead) {
+
+        flagFor = true;
+
+      }
+
+      // Check if we are on a case ...: or default:
+      char* ptrCase = strstr(line->str, "case ");
+      char* ptrDefault = strstr(line->str, "default:");
+      if (
+        ptrCase == line->str + posHead ||
+        ptrDefault == line->str + posHead) {
+
+        flagCase = true;
+
+      }
+
+      // If the line starts with '}'
+      if (line->str[posHead] == '}') {
+
+        // Decrement the indent level
+        indent -= CBOLINE_INDENT_SIZE;
+
+      }
+
+      // Update the indent level of the line
+      line->indent = indent;
+
+      // If the line is not empty and not a comment
+      if (
+        length > 0 &&
+        CBoLineIsComment(line) == false) {
+
+        // If the line ends with '{'
+        if (line->str[length - 1] == '{') {
+
+          // If we are not on a line inside parenthesis
+          if (flagInParenthesis == false) {
+
+            // Increment the indent level
+            indent += CBOLINE_INDENT_SIZE;
+
+          }
+
+          // Update the flag
+          flagInParenthesis = false;
+          flagFor = false;
+
+        // If the line ends with '('
+        } else if (line->str[length - 1] == '(') {
+
+          // Increment the indent level
+          indent += CBOLINE_INDENT_SIZE;
+
+          // Update the flag
+          flagInParenthesis = true;
+
+        // If the line ends with '='
+        } else if (line->str[length - 1] == '=') {
+
+          // Update the multiline flag
+          flagMultiline = true;
+
+          // Increment the indent level
+          indent += CBOLINE_INDENT_SIZE;
+
+        // Else if the line ends with ';'
+        } else if (line->str[length - 1] == ';') {
+
+          // If we are on a multiline
+          if (flagMultiline == true) {
+
+            // Update the multiline flag
+            flagMultiline = false;
+
+            // Decrement the indent level
+            indent -= CBOLINE_INDENT_SIZE;
+
+          }
+
+          // If we are inside parenthesis but not in a for (...)
+          if (
+            flagInParenthesis == true &&
+            flagFor == false) {
+
+            // Update the flag
+            flagInParenthesis = false;
+
+            // Decrement the indent level
+            indent -= CBOLINE_INDENT_SIZE;
+
+          }
+
+          // If we are in a case ...
+          if (flagCase == true) {
+
+            // If the line is the break line of the case
+            char* ptrBreak =
+              strstr(
+                line->str,
+                "break;");
+            if (ptrBreak == line->str + posHead) {
+
+              // Update the flag
+              flagCase = false;
+
+              // Decrement the indent level
+              indent -= CBOLINE_INDENT_SIZE;
+
+            }
+
+          }
+
+        // Else if the line ends with ':'
+        } else if (line->str[length - 1] == ':') {
+
+          // Update the flag
+          flagCase = true;
+
+          // Decrement the indent level
+          indent += CBOLINE_INDENT_SIZE;
+
+        }
+
+      }
+
+    } while (GSetIterStep(&iter));
+
+  }
+
+}
+
 // Function to add the CBoError 'error' to the CBoFile 'that'
 void CBoFileAddError(
   CBoFile* const that,
@@ -947,10 +1145,10 @@ void CBoFilePrintErrors(
 
   }
 
-  }
+}
 
 // Function to create a new CBoLine from its content,
-// Return a pointer toward the new CBoLine
+// Return a pointer to the new CBoLine
 CBoLine* CBoLineCreate(const char* const str) {
 
 #if BUILDMODE == 0
@@ -980,6 +1178,9 @@ CBoLine* CBoLineCreate(const char* const str) {
 
     }
 
+    // Init the indent level
+    that->indent = 0;
+
   }
 
   // Return the CBoLine
@@ -1003,7 +1204,7 @@ void CBoLineFree(CBoLine** const that) {
 
 // Function to create a new CBoError from its file, line, index of line
 // and type
-// Return a pointer toward the new CBoError
+// Return a pointer to the new CBoError
 CBoError* CBoErrorCreate(
   CBoFile* const file,
   CBoLine* const line,
@@ -1169,8 +1370,9 @@ bool CBoFileCheck(
   bool success = true;
 
   // Check the rules according to the type of file
-  if (that->type == CBoFileType_C_header ||
-      that->type == CBoFileType_C_body) {
+  if (
+    that->type == CBoFileType_C_header ||
+    that->type == CBoFileType_C_body) {
 
     success &=
       CBoFileCheckLineLength(
@@ -1228,6 +1430,16 @@ bool CBoFileCheck(
       CBoFileCheckEmptyLineBeforeComment(
         that,
         cbo);
+
+    // If there is still no problem, check the indentation only
+    if (success == true) {
+
+      success &=
+        CBoFileCheckIndentLevel(
+          that,
+          cbo);
+
+    }
 
   }
 
@@ -1403,9 +1615,10 @@ bool CBoFileCheckTrailingSpace(
       unsigned int length = CBoLineGetLength(line);
 
       // If the last char of the line is a space or a tab
-      if (length > 0 &&
-          (line->str[length - 1] == ' ' ||
-           line->str[length - 1] == '\t')) {
+      if (
+        length > 0 &&
+        (line->str[length - 1] == ' ' ||
+        line->str[length - 1] == '\t')) {
 
         // Update the success flag
         success = false;
@@ -1524,11 +1737,12 @@ bool CBoFileCheckEmptyLineBeforeClosingCurlyBrace(
 
       // If the line is not empty and starts with a closing curly
       // brace and the previous line is not empty and not a comment
-      if (length > 0 &&
-          prevLine != NULL &&
-          CBoLineGetLength(prevLine) != 0 &&
-          CBoLineIsComment(prevLine) == false &&
-          line->str[posHead] == '}') {
+      if (
+        length > 0 &&
+        prevLine != NULL &&
+        CBoLineGetLength(prevLine) != 0 &&
+        CBoLineIsComment(prevLine) == false &&
+        line->str[posHead] == '}') {
 
         // Update the success flag
         success = false;
@@ -1656,9 +1870,10 @@ bool CBoFileCheckEmptyLineAfterOpeningCurlyBrace(
 
       // If the previous line ends with a closing curly brace
       // and the line is not empty
-      if (prevLength > 0 &&
-          prevLine->str[prevLength - 1] == '{' &&
-          length != 0) {
+      if (
+        prevLength > 0 &&
+        prevLine->str[prevLength - 1] == '{' &&
+        length != 0) {
 
         // Update the success flag
         success = false;
@@ -1779,10 +1994,11 @@ bool CBoFileCheckEmptyLineAfterClosingCurlyBrace(
 
       // If the line is a closing curly brace and the previous line
       // is not empty or a comment
-      if (prevLength > 0 &&
-          CBoLineIsComment(prevLine) == false &&
-          prevLine->str[prevLength - 1] == '}' &&
-          length != 0) {
+      if (
+        prevLength > 0 &&
+        CBoLineIsComment(prevLine) == false &&
+        prevLine->str[prevLength - 1] == '}' &&
+        length != 0) {
 
         // Update the success flag
         success = false;
@@ -1903,8 +2119,7 @@ bool CBoFileCheckSeveralBlankLines(
 
       // If the line is a closing curly brace and the previous line
       // is not empty or a comment
-      if (prevLength == 0 &&
-          length == 0) {
+      if (prevLength == 0 && length == 0) {
 
         // Update the success flag
         success = false;
@@ -2024,9 +2239,10 @@ bool CBoFileCheckSpaceAroundComma(
         bool flagDoubleQuote = false;
 
         // Loop on the char of the line
-        for (unsigned int iChar = 0;
-             iChar < length;
-             ++iChar) {
+        for (
+          unsigned int iChar = 0;
+          iChar < length;
+          ++iChar) {
 
           if (line->str[iChar] == '\'') {
 
@@ -2046,58 +2262,61 @@ bool CBoFileCheckSpaceAroundComma(
 
           }
 
-          // If the char is a comma and the previous one is a space
-          if (flagQuote == false &&
-              flagDoubleQuote == false &&
+          // If we are not in a string
+          if (flagQuote == false && flagDoubleQuote == false) {
+
+            // If the char is a comma and the previous one is a space
+            if (
               line->str[iChar] == ',' &&
               (iChar == 0 ||
-               line->str[iChar - 1] == ' ' ||
-               line->str[iChar - 1] == '\t')) {
+              line->str[iChar - 1] == ' ' ||
+              line->str[iChar - 1] == '\t')) {
 
-            // Update the success flag
-            success = false;
+              // Update the success flag
+              success = false;
 
-            // Create the error
-            CBoError* error =
-              CBoErrorCreate(
+              // Create the error
+              CBoError* error =
+                CBoErrorCreate(
+                  that,
+                  line,
+                  iLine + 1,
+                  CBoErrorType_SpaceAroundComma);
+
+              // Add the error to the file
+              CBoFileAddError(
                 that,
-                line,
-                iLine + 1,
-                CBoErrorType_SpaceAroundComma);
+                error);
 
-            // Add the error to the file
-            CBoFileAddError(
-              that,
-              error);
+              // Skip the end of the line
+              iChar = length;
 
-            // Skip the end of the line
-            iChar = length;
+            // If the char is a comma and the next one is a space
+            } else if (
+              line->str[iChar] == ',' &&
+              line->str[iChar + 1] != ' ' &&
+              iChar != length - 1) {
 
-          // If the char is a comma and the next one is a space
-          } else if (flagQuote == false &&
-                     flagDoubleQuote == false &&
-                     line->str[iChar] == ',' &&
-                     line->str[iChar + 1] != ' ' &&
-                     iChar != length - 1) {
+              // Update the success flag
+              success = false;
 
-            // Update the success flag
-            success = false;
+              // Create the error
+              CBoError* error =
+                CBoErrorCreate(
+                  that,
+                  line,
+                  iLine + 1,
+                  CBoErrorType_SpaceAroundComma);
 
-            // Create the error
-            CBoError* error =
-              CBoErrorCreate(
+              // Add the error to the file
+              CBoFileAddError(
                 that,
-                line,
-                iLine + 1,
-                CBoErrorType_SpaceAroundComma);
+                error);
 
-            // Add the error to the file
-            CBoFileAddError(
-              that,
-              error);
+              // Skip the end of the line
+              iChar = length;
 
-            // Skip the end of the line
-            iChar = length;
+            }
 
           }
 
@@ -2201,9 +2420,10 @@ bool CBoFileCheckSpaceAroundSemicolon(
       bool flagDoubleQuote = false;
 
       // Loop on the char of the line
-      for (unsigned int iChar = 0;
-           iChar < length;
-           ++iChar) {
+      for (
+        unsigned int iChar = 0;
+        iChar < length;
+        ++iChar) {
 
         if (line->str[iChar] == '\'') {
 
@@ -2223,32 +2443,36 @@ bool CBoFileCheckSpaceAroundSemicolon(
 
         }
 
-        // If the char is a semicolon and the previous one is a space
-        if (flagQuote == false &&
-            flagDoubleQuote == false &&
+        // If we are not in a string
+        if (flagQuote == false && flagDoubleQuote == false) {
+
+          // If the char is a semicolon and the previous one is a space
+          if (
             line->str[iChar] == ';' &&
             (iChar == 0 ||
-             line->str[iChar - 1] == ' ' ||
-             line->str[iChar - 1] == '\t')) {
+            line->str[iChar - 1] == ' ' ||
+            line->str[iChar - 1] == '\t')) {
 
-          // Update the success flag
-          success = false;
+            // Update the success flag
+            success = false;
 
-          // Create the error
-          CBoError* error =
-            CBoErrorCreate(
+            // Create the error
+            CBoError* error =
+              CBoErrorCreate(
+                that,
+                line,
+                iLine + 1,
+                CBoErrorType_SpaceAroundSemicolon);
+
+            // Add the error to the file
+            CBoFileAddError(
               that,
-              line,
-              iLine + 1,
-              CBoErrorType_SpaceAroundSemicolon);
+              error);
 
-          // Add the error to the file
-          CBoFileAddError(
-            that,
-            error);
+            // Skip the end of the line
+            iChar = length;
 
-          // Skip the end of the line
-          iChar = length;
+          }
 
         }
 
@@ -2352,18 +2576,20 @@ bool CBoFileCheckSpaceAroundOperator(
       // Get the length of the line
       unsigned int length = CBoLineGetLength(line);
 
-      // If the line is not a comment
-      if (CBoLineIsComment(line) == false &&
-          CBoLineIsPrecompilCmd(line) == false) {
+      // If the line is not a comment or a precompiler command
+      if (
+        CBoLineIsComment(line) == false &&
+        CBoLineIsPrecompilCmd(line) == false) {
 
         // Declare two flags to memorize the strings in the code
         bool flagQuote = false;
         bool flagDoubleQuote = false;
 
         // Loop on the char of the line
-        for (unsigned int iChar = 0;
-             iChar < length;
-             ++iChar) {
+        for (
+          unsigned int iChar = 0;
+          iChar < length;
+          ++iChar) {
 
           if (line->str[iChar] == '\'') {
 
@@ -2383,98 +2609,104 @@ bool CBoFileCheckSpaceAroundOperator(
 
           }
 
-          // Search for the character in the possible operators
-          char* ptr =
-            strchr(
-              operators,
-              line->str[iChar]);
+          // If we are not in a string
+          if (flagQuote == false && flagDoubleQuote == false) {
 
-          // If the char is an operator
-          if (flagQuote == false &&
-              flagDoubleQuote == false &&
-              ptr != NULL) {
+            // Search for the character in the possible operators
+            char* ptr =
+              strchr(
+                operators,
+                line->str[iChar]);
 
-            // If there is not the needed space before the operator
-            if (line->str[iChar] != '-' &&
+            // If the char is an operator
+            if (ptr != NULL) {
+
+              // If there is not the needed space before the operator
+              if (
+                line->str[iChar] != '-' &&
                 iChar > 0 &&
                 line->str[iChar - 1] != ' ' &&
                 line->str[iChar - 1] != line->str[iChar] &&
                 line->str[iChar + 1] != line->str[iChar]) {
 
-              // Update the success flag
-              success = false;
+                // Update the success flag
+                success = false;
 
-              // Create the error
-              CBoError* error =
-                CBoErrorCreate(
+                // Create the error
+                CBoError* error =
+                  CBoErrorCreate(
+                    that,
+                    line,
+                    iLine + 1,
+                    CBoErrorType_SpaceAroundOperator);
+
+                // Add the error to the file
+                CBoFileAddError(
                   that,
-                  line,
-                  iLine + 1,
-                  CBoErrorType_SpaceAroundOperator);
+                  error);
 
-              // Add the error to the file
-              CBoFileAddError(
-                that,
-                error);
+                // Skip the end of the line
+                iChar = length;
 
-              // Skip the end of the line
-              iChar = length;
+              // If there is not the needed space after the operator '-'
+              } else if (
+                line->str[iChar] == '-' &&
+                line->str[iChar + 1] != ' ' &&
+                line->str[iChar + 1] != line->str[iChar] &&
+                line->str[iChar + 1] != '=' &&
+                line->str[iChar + 1] < '0' &&
+                line->str[iChar + 1] > '9' &&
+                line->str[iChar + 1] != '>') {
 
-            // If there is not the needed space after the operator '-'
-            } else if (line->str[iChar] == '-' &&
-                       line->str[iChar + 1] != ' ' &&
-                       line->str[iChar + 1] != line->str[iChar] &&
-                       line->str[iChar + 1] != '=' &&
-                       line->str[iChar + 1] < '0' &&
-                       line->str[iChar + 1] > '9' &&
-                       line->str[iChar + 1] != '>') {
+                // Update the success flag
+                success = false;
 
-              // Update the success flag
-              success = false;
+                // Create the error
+                CBoError* error =
+                  CBoErrorCreate(
+                    that,
+                    line,
+                    iLine + 1,
+                    CBoErrorType_SpaceAroundOperator);
 
-              // Create the error
-              CBoError* error =
-                CBoErrorCreate(
+                // Add the error to the file
+                CBoFileAddError(
                   that,
-                  line,
-                  iLine + 1,
-                  CBoErrorType_SpaceAroundOperator);
+                  error);
 
-              // Add the error to the file
-              CBoFileAddError(
-                that,
-                error);
+                // Skip the end of the line
+                iChar = length;
 
-              // Skip the end of the line
-              iChar = length;
+              // If there is not the needed space after the operator
+              // other than '-'
+              } else if (
+                line->str[iChar] != '-' &&
+                iChar < length - 1 &&
+                line->str[iChar + 1] != ' ' &&
+                line->str[iChar + 1] != line->str[iChar] &&
+                line->str[iChar + 1] != '=' &&
+                line->str[iChar - 1] != line->str[iChar]) {
 
-            // If there is not the needed space after the operator
-            // other than '-'
-            } else if (line->str[iChar] != '-' &&
-                       iChar < length - 1 &&
-                       line->str[iChar + 1] != ' ' &&
-                       line->str[iChar + 1] != line->str[iChar] &&
-                       line->str[iChar + 1] != '=' &&
-                       line->str[iChar - 1] != line->str[iChar]) {
+                // Update the success flag
+                success = false;
 
-              // Update the success flag
-              success = false;
+                // Create the error
+                CBoError* error =
+                  CBoErrorCreate(
+                    that,
+                    line,
+                    iLine + 1,
+                    CBoErrorType_SpaceAroundOperator);
 
-              // Create the error
-              CBoError* error =
-                CBoErrorCreate(
+                // Add the error to the file
+                CBoFileAddError(
                   that,
-                  line,
-                  iLine + 1,
-                  CBoErrorType_SpaceAroundOperator);
+                  error);
 
-              // Add the error to the file
-              CBoFileAddError(
-                that,
-                error);
+                // Skip the end of the line
+                iChar = length;
 
-              // Skip the end of the line
-              iChar = length;
+              }
 
             }
 
@@ -2710,8 +2942,9 @@ bool CBoFileCheckNoCurlyBraceAtTail(
           '}');
 
       // If the last closing brace is not at the head of the line
-      if (posLastCloseBrace != length &&
-          posHead != posLastCloseBrace) {
+      if (
+        posLastCloseBrace != length &&
+        posHead != posLastCloseBrace) {
 
         // Get the position of its opening brace
         unsigned int posOpenBrace =
@@ -2844,9 +3077,10 @@ bool CBoFileCheckCharBeforeDot(
         bool flagDoubleQuote = false;
 
         // Loop on the char in the line
-        for (unsigned int iChar = 0;
-             iChar < length;
-             ++iChar) {
+        for (
+          unsigned int iChar = 0;
+          iChar < length;
+          ++iChar) {
 
           if (line->str[iChar] == '\'') {
 
@@ -2866,38 +3100,42 @@ bool CBoFileCheckCharBeforeDot(
 
           }
 
-          // If the dot is not at the head of the line and
-          // the char before the '.' is invalid
-          if (line->str[iChar] == '.' &&
-              flagQuote == false &&
-              flagDoubleQuote == false &&
+          // If we are not in a string
+          if (flagQuote == false && flagDoubleQuote == false) {
+
+            // If the dot is not at the head of the line and
+            // the char before the '.' is invalid
+            if (
+              line->str[iChar] == '.' &&
               (iChar == 0 ||
-               (iChar != posHead &&
-                !(line->str[iChar - 1] >= 'a' &&
-                  line->str[iChar - 1] <= 'z') &&
-                !(line->str[iChar - 1] >= 'A' &&
-                  line->str[iChar - 1] <= 'Z') &&
-                !(line->str[iChar - 1] >= '0' &&
-                  line->str[iChar - 1] <= '9')))) {
+              (iChar != posHead &&
+              !(line->str[iChar - 1] >= 'a' &&
+              line->str[iChar - 1] <= 'z') &&
+              !(line->str[iChar - 1] >= 'A' &&
+              line->str[iChar - 1] <= 'Z') &&
+              !(line->str[iChar - 1] >= '0' &&
+              line->str[iChar - 1] <= '9')))) {
 
-            // Update the success flag
-            success = false;
+              // Update the success flag
+              success = false;
 
-            // Create the error
-            CBoError* error =
-              CBoErrorCreate(
+              // Create the error
+              CBoError* error =
+                CBoErrorCreate(
+                  that,
+                  line,
+                  iLine + 1,
+                  CBoErrorType_CharBeforeDot);
+
+              // Add the error to the file
+              CBoFileAddError(
                 that,
-                line,
-                iLine + 1,
-                CBoErrorType_CharBeforeDot);
+                error);
 
-            // Add the error to the file
-            CBoFileAddError(
-              that,
-              error);
+              // Skip the end of the line
+              iChar = length;
 
-            // Skip the end of the line
-            iChar = length;
+            }
 
           }
 
@@ -3004,9 +3242,10 @@ bool CBoFileCheckSpaceBeforeOpenCurlyBrace(
         bool flagDoubleQuote = false;
 
         // Loop on the char in the line
-        for (unsigned int iChar = 0;
-             iChar < length;
-             ++iChar) {
+        for (
+          unsigned int iChar = 0;
+          iChar < length;
+          ++iChar) {
 
           if (line->str[iChar] == '\'') {
 
@@ -3026,33 +3265,37 @@ bool CBoFileCheckSpaceBeforeOpenCurlyBrace(
 
           }
 
-          // If the char is an opening curly brace and not preceded
-          // by another curly brace or space
-          if (line->str[iChar] == '{' &&
-              flagQuote == false &&
-              flagDoubleQuote == false &&
+          // If we are not in a string
+          if (flagQuote == false && flagDoubleQuote == false) {
+
+            // If the char is an opening curly brace and not preceded
+            // by another curly brace or space
+            if (
+              line->str[iChar] == '{' &&
               iChar > 0 &&
               line->str[iChar - 1] != ' ' &&
               line->str[iChar - 1] != '{') {
 
-            // Update the success flag
-            success = false;
+              // Update the success flag
+              success = false;
 
-            // Create the error
-            CBoError* error =
-              CBoErrorCreate(
+              // Create the error
+              CBoError* error =
+                CBoErrorCreate(
+                  that,
+                  line,
+                  iLine + 1,
+                  CBoErrorType_SpaceBeforeOpeningCurlyBrace);
+
+              // Add the error to the file
+              CBoFileAddError(
                 that,
-                line,
-                iLine + 1,
-                CBoErrorType_SpaceBeforeOpeningCurlyBrace);
+                error);
 
-            // Add the error to the file
-            CBoFileAddError(
-              that,
-              error);
+              // Skip the end of the line
+              iChar = length;
 
-            // Skip the end of the line
-            iChar = length;
+            }
 
           }
 
@@ -3153,10 +3396,11 @@ bool CBoFileCheckEmptyLineBeforeComment(
 
       // If the line is a comment and the previous line is not empty and
       // not a comment
-      if (prevLine != NULL &&
-          CBoLineGetLength(prevLine) != 0 &&
-          CBoLineIsComment(prevLine) == false &&
-          CBoLineIsComment(line) == true) {
+      if (
+        prevLine != NULL &&
+        CBoLineGetLength(prevLine) != 0 &&
+        CBoLineIsComment(prevLine) == false &&
+        CBoLineIsComment(line) == true) {
 
         // Update the success flag
         success = false;
@@ -3191,6 +3435,180 @@ bool CBoFileCheckEmptyLineBeforeComment(
     fprintf(
       cbo->stream,
       "CheckEmptyLineBeforeComment %s",
+      ProgBarTxtGet(&progBar));
+    if (success == true) {
+
+      fprintf(
+        cbo->stream,
+        " OK");
+
+    }
+
+    fprintf(
+      cbo->stream,
+      "\n");
+    fflush(cbo->stream);
+
+  }
+
+  // Return the successfull code
+  return success;
+
+}
+
+// Check the ident level of the lines of the
+// CBoFile 'that' with the CBo 'cbo'
+// Return true if there was no problem, else false
+bool CBoFileCheckIndentLevel(
+  CBoFile* const that,
+  CBo* const cbo) {
+
+#if BUILDMODE == 0
+  if (that == NULL) {
+
+    CBoErr->_type = PBErrTypeNullPointer;
+    sprintf(CBoErr->_msg, "'that' is null");
+    PBErrCatch(CBoErr);
+
+  }
+
+  if (cbo == NULL) {
+
+    CBoErr->_type = PBErrTypeNullPointer;
+    sprintf(CBoErr->_msg, "'cbo' is null");
+    PBErrCatch(CBoErr);
+
+  }
+
+#endif
+
+  // Declare a variable to memorize the success
+  bool success = true;
+
+  // Create a progress bar
+  ProgBarTxt progBar = ProgBarTxtCreateStatic();
+
+  // If the file is not empty
+  if (GSetNbElem(&(that->lines)) > 0) {
+
+    // Declare an iterator on the lines
+    GSetIterForward iter =
+      GSetIterForwardCreateStatic(&(that->lines));
+
+    // Loop on the lines
+    unsigned int iLine = 0;
+    do {
+
+      // Update and display the ProgBar
+      ProgBarTxtSet(
+        &progBar,
+        (float)iLine / (float)GSetNbElem(&(that->lines)));
+      fprintf(
+        cbo->stream,
+        "CheckIndentLevel %s\r",
+        ProgBarTxtGet(&progBar));
+      fflush(cbo->stream);
+
+      // Get the line
+      CBoLine* line = GSetIterGet(&iter);
+
+      // Get the next line
+      GSetIterForward iterNext = iter;
+      GSetIterStep(&iterNext);
+      CBoLine* nextLine = GSetIterGet(&iterNext);
+
+      // Get the position of the head of the line
+      unsigned int posHead = CBoLineGetPosHead(line);
+
+      // Get the length of the line
+      unsigned int length = strlen(line->str);
+
+      // If the line is a comment
+      if (CBoLineIsComment(line) == true) {
+
+        // If the line is not indented as the next line
+        if (
+          nextLine != NULL &&
+          posHead != CBoLineGetPosHead(nextLine)) {
+
+          // Update the success flag
+          success = false;
+
+          // Create the error
+          CBoError* error =
+            CBoErrorCreate(
+              that,
+              line,
+              iLine + 1,
+              CBoErrorType_IndentLevel);
+
+          // Add the error to the file
+          CBoFileAddError(
+            that,
+            error);
+
+        }
+
+      // Else, if the line is a precompiler command
+      } else if (CBoLineIsPrecompilCmd(line) == true) {
+
+        // If the line is not
+        if (posHead != 0) {
+
+          // Update the success flag
+          success = false;
+
+          // Create the error
+          CBoError* error =
+            CBoErrorCreate(
+              that,
+              line,
+              iLine + 1,
+              CBoErrorType_IndentLevel);
+
+          // Add the error to the file
+          CBoFileAddError(
+            that,
+            error);
+
+        }
+
+      // Else, the line is not a comment or precompiler command,
+      // if the line is not correctly indented and not empty
+      } else if (
+        posHead != length &&
+        posHead != line->indent) {
+
+        // Update the success flag
+        success = false;
+
+        // Create the error
+        CBoError* error =
+          CBoErrorCreate(
+            that,
+            line,
+            iLine + 1,
+            CBoErrorType_IndentLevel);
+
+        // Add the error to the file
+        CBoFileAddError(
+          that,
+          error);
+
+      }
+
+      // Move to the next line
+      ++iLine;
+
+    } while (GSetIterStep(&iter));
+
+    // Update and display the ProgBar
+    ProgBarTxtSet(
+      &progBar,
+      1.0);
+    fprintf(
+      cbo->stream,
+      "CheckIndentLevel %s",
       ProgBarTxtGet(&progBar));
     if (success == true) {
 
@@ -3300,9 +3718,10 @@ unsigned int CBoLineGetPosHead(const CBoLine* const that) {
 
   // Loop until the end of the line or a charcter different of space
   // or tab
-  while (that->str[posHead] != '\0' &&
-         (that->str[posHead] == ' ' ||
-          that->str[posHead] == '\t')) {
+  while (
+    that->str[posHead] != '\0' &&
+    (that->str[posHead] == ' ' ||
+    that->str[posHead] == '\t')) {
 
     ++posHead;
 
@@ -3385,18 +3804,20 @@ unsigned int CBoLineGetPosCloseCharFrom(
   do {
 
     // If it's the beginning of a string
-    if (flagQuote == false &&
-        that->str[pos] == '"' &&
-        pos > 0 &&
-        that->str[pos - 1] != '\\') {
+    if (
+      flagQuote == false &&
+      that->str[pos] == '"' &&
+      pos > 0 &&
+      that->str[pos - 1] != '\\') {
 
       // Update the flag
       flagDoubleQuote = !flagDoubleQuote;
 
-    } else if (flagDoubleQuote == false &&
-        that->str[pos] == '\'' &&
-        pos > 0 &&
-        that->str[pos - 1] != '\\') {
+    } else if (
+      flagDoubleQuote == false &&
+      that->str[pos] == '\'' &&
+      pos > 0 &&
+      that->str[pos - 1] != '\\') {
 
       // Update the flag
       flagQuote = !flagQuote;
@@ -3404,8 +3825,7 @@ unsigned int CBoLineGetPosCloseCharFrom(
     }
 
     // If we are not in a string
-    if (flagQuote == false &&
-        flagDoubleQuote == false) {
+    if (flagQuote == false && flagDoubleQuote == false) {
 
       // If the character at current position is an opening char
       if (that->str[pos] == that->str[from]) {
@@ -3425,8 +3845,7 @@ unsigned int CBoLineGetPosCloseCharFrom(
 
     ++pos;
 
-  } while (pos < length &&
-           lvl != 0);
+  } while (pos < length && lvl != 0);
 
   // If we have found the closing char
   if (lvl == 0) {
@@ -3494,18 +3913,20 @@ unsigned int CBoLineGetPosOpenCharFrom(
   do {
 
     // If it's the beginning of a string
-    if (flagQuote == false &&
-        that->str[pos] == '"' &&
-        pos > 0 &&
-        that->str[pos - 1] != '\\') {
+    if (
+      flagQuote == false &&
+      that->str[pos] == '"' &&
+      pos > 0 &&
+      that->str[pos - 1] != '\\') {
 
       // Update the flag
       flagDoubleQuote = !flagDoubleQuote;
 
-    } else if (flagDoubleQuote == false &&
-        that->str[pos] == '\'' &&
-        pos > 0 &&
-        that->str[pos - 1] != '\\') {
+    } else if (
+      flagDoubleQuote == false &&
+      that->str[pos] == '\'' &&
+      pos > 0 &&
+      that->str[pos - 1] != '\\') {
 
       // Update the flag
       flagQuote = !flagQuote;
@@ -3513,8 +3934,9 @@ unsigned int CBoLineGetPosOpenCharFrom(
     }
 
     // If we are not in a string
-    if (flagQuote == false &&
-        flagDoubleQuote == false) {
+    if (
+      flagQuote == false &&
+      flagDoubleQuote == false) {
 
       // If the character at current position is a closing char
       if (that->str[pos] == that->str[from]) {
@@ -3534,8 +3956,7 @@ unsigned int CBoLineGetPosOpenCharFrom(
 
     --pos;
 
-  } while (pos >= 0 &&
-           lvl != 0);
+  } while (pos >= 0 && lvl != 0);
 
   // If we have found the opening char
   if (lvl == 0) {
@@ -3585,18 +4006,20 @@ unsigned int CBoLineGetPosLast(
   do {
 
     // If it's the beginning of a string
-    if (flagQuote == false &&
-        that->str[pos] == '"' &&
-        pos > 0 &&
-        that->str[pos - 1] != '\\') {
+    if (
+      flagQuote == false &&
+      that->str[pos] == '"' &&
+      pos > 0 &&
+      that->str[pos - 1] != '\\') {
 
       // Update the flag
       flagDoubleQuote = !flagDoubleQuote;
 
-    } else if (flagDoubleQuote == false &&
-        that->str[pos] == '\'' &&
-        pos > 0 &&
-        that->str[pos - 1] != '\\') {
+    } else if (
+      flagDoubleQuote == false &&
+      that->str[pos] == '\'' &&
+      pos > 0 &&
+      that->str[pos - 1] != '\\') {
 
       // Update the flag
       flagQuote = !flagQuote;
@@ -3604,8 +4027,9 @@ unsigned int CBoLineGetPosLast(
     }
 
     // If we are not in a string
-    if (flagQuote == false &&
-        flagDoubleQuote == false) {
+    if (
+      flagQuote == false &&
+      flagDoubleQuote == false) {
 
       // If the character at the curren tposition is the searched
       // character 'c'
