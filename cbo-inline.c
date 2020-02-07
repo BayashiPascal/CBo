@@ -12,7 +12,9 @@ int CBoGetNbFiles(const CBo* const that) {
   if (that == NULL) {
 
     CBoErr->_type = PBErrTypeNullPointer;
-    sprintf(CBoErr->_msg, "'that' is null");
+    sprintf(
+      CBoErr->_msg,
+      "'that' is null");
     PBErrCatch(CBoErr);
 
   }

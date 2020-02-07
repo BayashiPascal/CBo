@@ -71,6 +71,7 @@ typedef enum CBoErrorType {
   CBoErrorType_SpaceBeforeOpeningCurlyBrace,
   CBoErrorType_EmptyLineBeforeComment,
   CBoErrorType_IndentLevel,
+  CBoErrorType_SeveralArgOnOneLine,
 
 } CBoErrorType;
 
@@ -120,6 +121,7 @@ const char* cboErrorTypeStr[] = {
   "No space before opening curly brace",
   "No empty line before comment",
   "Indent level is incorrect",
+  "Several arguments on the same line",
 
 };
 
@@ -287,10 +289,17 @@ bool CBoFileCheckEmptyLineBeforeComment(
   CBoFile* const that,
   CBo* const cbo);
 
-// Check the ident level of the lines of the
+// Check the indent level of the lines of the
 // CBoFile 'that' with the CBo 'cbo'
 // Return true if there was no problem, else false
 bool CBoFileCheckIndentLevel(
+  CBoFile* const that,
+  CBo* const cbo);
+
+// Check there is no several arguments on one line of the
+// CBoFile 'that' with the CBo 'cbo'
+// Return true if there was no problem, else false
+bool CBoFileCheckSeveralArgOnOneLine(
   CBoFile* const that,
   CBo* const cbo);
 
@@ -337,7 +346,10 @@ unsigned int CBoLineGetPosLast(
 CBo* CBoCreate(void) {
 
   // Allocate memory for the CBo
-  CBo* that = PBErrMalloc(CBoErr, sizeof(CBo));
+  CBo* that =
+    PBErrMalloc(
+      CBoErr,
+      sizeof(CBo));
 
   // Init the properties
   that->filePaths = GSetStrCreateStatic();
@@ -393,7 +405,9 @@ bool CBoProcessCmdLineArguments(
   if (that == NULL) {
 
     CBoErr->_type = PBErrTypeNullPointer;
-    sprintf(CBoErr->_msg, "'that' is null");
+    sprintf(
+      CBoErr->_msg,
+      "'that' is null");
     PBErrCatch(CBoErr);
 
   }
@@ -406,7 +420,11 @@ bool CBoProcessCmdLineArguments(
     iArg < argc;
     ++iArg) {
 
-    if (strcmp(argv[iArg], "-help") == 0) {
+    int retStrCmp =
+      strcmp(
+        argv[iArg],
+        "-help");
+    if (retStrCmp == 0) {
 
       printf("cbo\n");
       printf("[-help] : print the help message\n");
@@ -415,37 +433,48 @@ bool CBoProcessCmdLineArguments(
       printf("\n");
 
     // Else, if the argument is -listFile
-    } else if (strcmp(argv[iArg], "-listFile") == 0) {
-
-      // Update the flag
-      that->flagListFileError = true;
-
-    // Else, any other arguments is considered to be a path
-    // to a file to check
     } else {
 
-      // Try to open the file to check the path
-      FILE* f = fopen(argv[iArg], "r");
+      unsigned int retStrCmp =
+        strcmp(
+          argv[iArg],
+          "-listFile");
+      if (retStrCmp == 0) {
 
-      // If the path is correct
-      if (f != NULL) {
+        // Update the flag
+        that->flagListFileError = true;
 
-        // Close the stream
-        fclose(f);
-
-        // Add the path to the list of files to check
-        GSetAppend(
-          &(that->filePaths),
-          (char*)(argv[iArg]));
-
-      // Else the path is incorrect
+      // Else, any other arguments is considered to be a path
+      // to a file to check
       } else {
 
-        fprintf(
-          that->stream,
-          "The path [%s] is incorrect\n",
-          argv[iArg]);
-        return false;
+        // Try to open the file to check the path
+        FILE* f =
+          fopen(
+            argv[iArg],
+            "r");
+
+        // If the path is correct
+        if (f != NULL) {
+
+          // Close the stream
+          fclose(f);
+
+          // Add the path to the list of files to check
+          GSetAppend(
+            &(that->filePaths),
+            (char*)(argv[iArg]));
+
+        // Else the path is incorrect
+        } else {
+
+          fprintf(
+            that->stream,
+            "The path [%s] is incorrect\n",
+            argv[iArg]);
+          return false;
+
+        }
 
       }
 
@@ -465,7 +494,9 @@ unsigned int CBoGetNbFilesWithError(const CBo* const that) {
   if (that == NULL) {
 
     CBoErr->_type = PBErrTypeNullPointer;
-    sprintf(CBoErr->_msg, "'that' is null");
+    sprintf(
+      CBoErr->_msg,
+      "'that' is null");
     PBErrCatch(CBoErr);
 
   }
@@ -483,7 +514,9 @@ unsigned int CBoGetNbErrors(const CBo* const that) {
   if (that == NULL) {
 
     CBoErr->_type = PBErrTypeNullPointer;
-    sprintf(CBoErr->_msg, "'that' is null");
+    sprintf(
+      CBoErr->_msg,
+      "'that' is null");
     PBErrCatch(CBoErr);
 
   }
@@ -523,7 +556,9 @@ bool CBoCheckAllFiles(CBo* const that) {
   if (that == NULL) {
 
     CBoErr->_type = PBErrTypeNullPointer;
-    sprintf(CBoErr->_msg, "'that' is null");
+    sprintf(
+      CBoErr->_msg,
+      "'that' is null");
     PBErrCatch(CBoErr);
 
   }
@@ -692,7 +727,9 @@ CBoFile* CBoFileCreate(const char* const filePath) {
   if (filePath == NULL) {
 
     CBoErr->_type = PBErrTypeNullPointer;
-    sprintf(CBoErr->_msg, "'filePath' is null");
+    sprintf(
+      CBoErr->_msg,
+      "'filePath' is null");
     PBErrCatch(CBoErr);
 
   }
@@ -816,7 +853,9 @@ CBoFileType CBoFileGetTypeFromPath(const char* const filePath) {
   if (filePath == NULL) {
 
     CBoErr->_type = PBErrTypeNullPointer;
-    sprintf(CBoErr->_msg, "'filePath' is null");
+    sprintf(
+      CBoErr->_msg,
+      "'filePath' is null");
     PBErrCatch(CBoErr);
 
   }
@@ -824,18 +863,33 @@ CBoFileType CBoFileGetTypeFromPath(const char* const filePath) {
 #endif
 
   // Get the position of the last '.'
-  char* ptr = strrchr(filePath, '.');
+  char* ptr =
+    strrchr(
+      filePath,
+      '.');
 
   // If we could find the last '.'
   if (ptr != NULL) {
 
-    if (strcmp(ptr, ".c") == 0) {
+    unsigned int retStrCmp =
+      strcmp(
+        ptr,
+        ".c");
+    if (retStrCmp == 0) {
 
       return CBoFileType_C_body;
 
-    } else if (strcmp(ptr, ".h") == 0) {
+    } else {
 
-      return CBoFileType_C_header;
+      retStrCmp =
+        strcmp(
+          ptr,
+          ".h");
+      if (retStrCmp == 0) {
+
+        return CBoFileType_C_header;
+
+      }
 
     }
 
@@ -853,7 +907,9 @@ unsigned int CBoFileGetNbError(const CBoFile* const that) {
   if (that == NULL) {
 
     CBoErr->_type = PBErrTypeNullPointer;
-    sprintf(CBoErr->_msg, "'that' is null");
+    sprintf(
+      CBoErr->_msg,
+      "'that' is null");
     PBErrCatch(CBoErr);
 
   }
@@ -900,7 +956,9 @@ void CBoFileUpdateIndentLvlLines(CBoFile* const that) {
   if (that == NULL) {
 
     CBoErr->_type = PBErrTypeNullPointer;
-    sprintf(CBoErr->_msg, "'that' is null");
+    sprintf(
+      CBoErr->_msg,
+      "'that' is null");
     PBErrCatch(CBoErr);
 
   }
@@ -937,7 +995,10 @@ void CBoFileUpdateIndentLvlLines(CBoFile* const that) {
       unsigned int posHead = CBoLineGetPosHead(line);
 
       // Check if we are on a for(...)
-      char* ptrFor = strstr(line->str, "for (");
+      char* ptrFor =
+        strstr(
+          line->str,
+          "for (");
       if (ptrFor == line->str + posHead) {
 
         flagFor = true;
@@ -945,8 +1006,14 @@ void CBoFileUpdateIndentLvlLines(CBoFile* const that) {
       }
 
       // Check if we are on a case ...: or default:
-      char* ptrCase = strstr(line->str, "case ");
-      char* ptrDefault = strstr(line->str, "default:");
+      char* ptrCase =
+        strstr(
+          line->str,
+          "case ");
+      char* ptrDefault =
+        strstr(
+          line->str,
+          "default:");
       if (
         ptrCase == line->str + posHead ||
         ptrDefault == line->str + posHead) {
@@ -1079,7 +1146,9 @@ void CBoFileAddError(
   if (that == NULL) {
 
     CBoErr->_type = PBErrTypeNullPointer;
-    sprintf(CBoErr->_msg, "'that' is null");
+    sprintf(
+      CBoErr->_msg,
+      "'that' is null");
     PBErrCatch(CBoErr);
 
   }
@@ -1087,7 +1156,9 @@ void CBoFileAddError(
   if (error == NULL) {
 
     CBoErr->_type = PBErrTypeNullPointer;
-    sprintf(CBoErr->_msg, "'error' is null");
+    sprintf(
+      CBoErr->_msg,
+      "'error' is null");
     PBErrCatch(CBoErr);
 
   }
@@ -1111,7 +1182,9 @@ void CBoFilePrintErrors(
   if (that == NULL) {
 
     CBoErr->_type = PBErrTypeNullPointer;
-    sprintf(CBoErr->_msg, "'that' is null");
+    sprintf(
+      CBoErr->_msg,
+      "'that' is null");
     PBErrCatch(CBoErr);
 
   }
@@ -1119,7 +1192,9 @@ void CBoFilePrintErrors(
   if (stream == NULL) {
 
     CBoErr->_type = PBErrTypeNullPointer;
-    sprintf(CBoErr->_msg, "'stream' is null");
+    sprintf(
+      CBoErr->_msg,
+      "'stream' is null");
     PBErrCatch(CBoErr);
 
   }
@@ -1155,7 +1230,9 @@ CBoLine* CBoLineCreate(const char* const str) {
   if (str == NULL) {
 
     CBoErr->_type = PBErrTypeNullPointer;
-    sprintf(CBoErr->_msg, "'str' is null");
+    sprintf(
+      CBoErr->_msg,
+      "'str' is null");
     PBErrCatch(CBoErr);
 
   }
@@ -1215,7 +1292,9 @@ CBoError* CBoErrorCreate(
   if (file == NULL) {
 
     CBoErr->_type = PBErrTypeNullPointer;
-    sprintf(CBoErr->_msg, "'file' is null");
+    sprintf(
+      CBoErr->_msg,
+      "'file' is null");
     PBErrCatch(CBoErr);
 
   }
@@ -1223,7 +1302,9 @@ CBoError* CBoErrorCreate(
   if (line == NULL) {
 
     CBoErr->_type = PBErrTypeNullPointer;
-    sprintf(CBoErr->_msg, "'line' is null");
+    sprintf(
+      CBoErr->_msg,
+      "'line' is null");
     PBErrCatch(CBoErr);
 
   }
@@ -1268,7 +1349,9 @@ void CBoErrorPrint(
   if (that == NULL) {
 
     CBoErr->_type = PBErrTypeNullPointer;
-    sprintf(CBoErr->_msg, "'that' is null");
+    sprintf(
+      CBoErr->_msg,
+      "'that' is null");
     PBErrCatch(CBoErr);
 
   }
@@ -1276,7 +1359,9 @@ void CBoErrorPrint(
   if (stream == NULL) {
 
     CBoErr->_type = PBErrTypeNullPointer;
-    sprintf(CBoErr->_msg, "'stream' is null");
+    sprintf(
+      CBoErr->_msg,
+      "'stream' is null");
     PBErrCatch(CBoErr);
 
   }
@@ -1285,11 +1370,17 @@ void CBoErrorPrint(
 
   // Create the coloring pattern
   char* errMsg =
-    SGRString(
-      SGR_ColorFG(255, 0, 0, "%s:%u %s."));
+    SGRString(SGR_ColorFG(
+      255,
+      0,
+      0,
+      "%s:%u %s."));
   char* errLine =
-    SGRString(
-      SGR_ColorBG(50, 50, 50, "%s"));
+    SGRString(SGR_ColorBG(
+      50,
+      50,
+      50,
+      "%s"));
 
   // Print the error message
   fprintf(
@@ -1330,7 +1421,9 @@ bool CBoFileCheck(
   if (that == NULL) {
 
     CBoErr->_type = PBErrTypeNullPointer;
-    sprintf(CBoErr->_msg, "'that' is null");
+    sprintf(
+      CBoErr->_msg,
+      "'that' is null");
     PBErrCatch(CBoErr);
 
   }
@@ -1338,7 +1431,9 @@ bool CBoFileCheck(
   if (cbo == NULL) {
 
     CBoErr->_type = PBErrTypeNullPointer;
-    sprintf(CBoErr->_msg, "'cbo' is null");
+    sprintf(
+      CBoErr->_msg,
+      "'cbo' is null");
     PBErrCatch(CBoErr);
 
   }
@@ -1351,8 +1446,11 @@ bool CBoFileCheck(
 
     // Display an info message
     char* msg =
-      SGRString(
-        SGR_ColorFG(125, 125, 255, "=== Check file [%s] as %s ==="));
+      SGRString(SGR_ColorFG(
+        125,
+        125,
+        255,
+        "=== Check file [%s] as %s ==="));
     fprintf(
       cbo->stream,
       msg,
@@ -1430,6 +1528,10 @@ bool CBoFileCheck(
       CBoFileCheckEmptyLineBeforeComment(
         that,
         cbo);
+    success &=
+      CBoFileCheckSeveralArgOnOneLine(
+        that,
+        cbo);
 
     // If there is still no problem, check the indentation only
     if (success == true) {
@@ -1458,7 +1560,9 @@ bool CBoFileCheckLineLength(
   if (that == NULL) {
 
     CBoErr->_type = PBErrTypeNullPointer;
-    sprintf(CBoErr->_msg, "'that' is null");
+    sprintf(
+      CBoErr->_msg,
+      "'that' is null");
     PBErrCatch(CBoErr);
 
   }
@@ -1466,7 +1570,9 @@ bool CBoFileCheckLineLength(
   if (cbo == NULL) {
 
     CBoErr->_type = PBErrTypeNullPointer;
-    sprintf(CBoErr->_msg, "'cbo' is null");
+    sprintf(
+      CBoErr->_msg,
+      "'cbo' is null");
     PBErrCatch(CBoErr);
 
   }
@@ -1568,7 +1674,9 @@ bool CBoFileCheckTrailingSpace(
   if (that == NULL) {
 
     CBoErr->_type = PBErrTypeNullPointer;
-    sprintf(CBoErr->_msg, "'that' is null");
+    sprintf(
+      CBoErr->_msg,
+      "'that' is null");
     PBErrCatch(CBoErr);
 
   }
@@ -1576,7 +1684,9 @@ bool CBoFileCheckTrailingSpace(
   if (cbo == NULL) {
 
     CBoErr->_type = PBErrTypeNullPointer;
-    sprintf(CBoErr->_msg, "'cbo' is null");
+    sprintf(
+      CBoErr->_msg,
+      "'cbo' is null");
     PBErrCatch(CBoErr);
 
   }
@@ -1681,7 +1791,9 @@ bool CBoFileCheckEmptyLineBeforeClosingCurlyBrace(
   if (that == NULL) {
 
     CBoErr->_type = PBErrTypeNullPointer;
-    sprintf(CBoErr->_msg, "'that' is null");
+    sprintf(
+      CBoErr->_msg,
+      "'that' is null");
     PBErrCatch(CBoErr);
 
   }
@@ -1689,7 +1801,9 @@ bool CBoFileCheckEmptyLineBeforeClosingCurlyBrace(
   if (cbo == NULL) {
 
     CBoErr->_type = PBErrTypeNullPointer;
-    sprintf(CBoErr->_msg, "'cbo' is null");
+    sprintf(
+      CBoErr->_msg,
+      "'cbo' is null");
     PBErrCatch(CBoErr);
 
   }
@@ -1813,7 +1927,9 @@ bool CBoFileCheckEmptyLineAfterOpeningCurlyBrace(
   if (that == NULL) {
 
     CBoErr->_type = PBErrTypeNullPointer;
-    sprintf(CBoErr->_msg, "'that' is null");
+    sprintf(
+      CBoErr->_msg,
+      "'that' is null");
     PBErrCatch(CBoErr);
 
   }
@@ -1821,7 +1937,9 @@ bool CBoFileCheckEmptyLineAfterOpeningCurlyBrace(
   if (cbo == NULL) {
 
     CBoErr->_type = PBErrTypeNullPointer;
-    sprintf(CBoErr->_msg, "'cbo' is null");
+    sprintf(
+      CBoErr->_msg,
+      "'cbo' is null");
     PBErrCatch(CBoErr);
 
   }
@@ -1937,7 +2055,9 @@ bool CBoFileCheckEmptyLineAfterClosingCurlyBrace(
   if (that == NULL) {
 
     CBoErr->_type = PBErrTypeNullPointer;
-    sprintf(CBoErr->_msg, "'that' is null");
+    sprintf(
+      CBoErr->_msg,
+      "'that' is null");
     PBErrCatch(CBoErr);
 
   }
@@ -1945,7 +2065,9 @@ bool CBoFileCheckEmptyLineAfterClosingCurlyBrace(
   if (cbo == NULL) {
 
     CBoErr->_type = PBErrTypeNullPointer;
-    sprintf(CBoErr->_msg, "'cbo' is null");
+    sprintf(
+      CBoErr->_msg,
+      "'cbo' is null");
     PBErrCatch(CBoErr);
 
   }
@@ -2062,7 +2184,9 @@ bool CBoFileCheckSeveralBlankLines(
   if (that == NULL) {
 
     CBoErr->_type = PBErrTypeNullPointer;
-    sprintf(CBoErr->_msg, "'that' is null");
+    sprintf(
+      CBoErr->_msg,
+      "'that' is null");
     PBErrCatch(CBoErr);
 
   }
@@ -2070,7 +2194,9 @@ bool CBoFileCheckSeveralBlankLines(
   if (cbo == NULL) {
 
     CBoErr->_type = PBErrTypeNullPointer;
-    sprintf(CBoErr->_msg, "'cbo' is null");
+    sprintf(
+      CBoErr->_msg,
+      "'cbo' is null");
     PBErrCatch(CBoErr);
 
   }
@@ -2183,7 +2309,9 @@ bool CBoFileCheckSpaceAroundComma(
   if (that == NULL) {
 
     CBoErr->_type = PBErrTypeNullPointer;
-    sprintf(CBoErr->_msg, "'that' is null");
+    sprintf(
+      CBoErr->_msg,
+      "'that' is null");
     PBErrCatch(CBoErr);
 
   }
@@ -2191,7 +2319,9 @@ bool CBoFileCheckSpaceAroundComma(
   if (cbo == NULL) {
 
     CBoErr->_type = PBErrTypeNullPointer;
-    sprintf(CBoErr->_msg, "'cbo' is null");
+    sprintf(
+      CBoErr->_msg,
+      "'cbo' is null");
     PBErrCatch(CBoErr);
 
   }
@@ -2367,7 +2497,9 @@ bool CBoFileCheckSpaceAroundSemicolon(
   if (that == NULL) {
 
     CBoErr->_type = PBErrTypeNullPointer;
-    sprintf(CBoErr->_msg, "'that' is null");
+    sprintf(
+      CBoErr->_msg,
+      "'that' is null");
     PBErrCatch(CBoErr);
 
   }
@@ -2375,7 +2507,9 @@ bool CBoFileCheckSpaceAroundSemicolon(
   if (cbo == NULL) {
 
     CBoErr->_type = PBErrTypeNullPointer;
-    sprintf(CBoErr->_msg, "'cbo' is null");
+    sprintf(
+      CBoErr->_msg,
+      "'cbo' is null");
     PBErrCatch(CBoErr);
 
   }
@@ -2521,7 +2655,9 @@ bool CBoFileCheckSpaceAroundOperator(
   if (that == NULL) {
 
     CBoErr->_type = PBErrTypeNullPointer;
-    sprintf(CBoErr->_msg, "'that' is null");
+    sprintf(
+      CBoErr->_msg,
+      "'that' is null");
     PBErrCatch(CBoErr);
 
   }
@@ -2529,7 +2665,9 @@ bool CBoFileCheckSpaceAroundOperator(
   if (cbo == NULL) {
 
     CBoErr->_type = PBErrTypeNullPointer;
-    sprintf(CBoErr->_msg, "'cbo' is null");
+    sprintf(
+      CBoErr->_msg,
+      "'cbo' is null");
     PBErrCatch(CBoErr);
 
   }
@@ -2760,7 +2898,9 @@ bool CBoFileCheckNoCurlyBraceAtHead(
   if (that == NULL) {
 
     CBoErr->_type = PBErrTypeNullPointer;
-    sprintf(CBoErr->_msg, "'that' is null");
+    sprintf(
+      CBoErr->_msg,
+      "'that' is null");
     PBErrCatch(CBoErr);
 
   }
@@ -2768,7 +2908,9 @@ bool CBoFileCheckNoCurlyBraceAtHead(
   if (cbo == NULL) {
 
     CBoErr->_type = PBErrTypeNullPointer;
-    sprintf(CBoErr->_msg, "'cbo' is null");
+    sprintf(
+      CBoErr->_msg,
+      "'cbo' is null");
     PBErrCatch(CBoErr);
 
   }
@@ -2884,7 +3026,9 @@ bool CBoFileCheckNoCurlyBraceAtTail(
   if (that == NULL) {
 
     CBoErr->_type = PBErrTypeNullPointer;
-    sprintf(CBoErr->_msg, "'that' is null");
+    sprintf(
+      CBoErr->_msg,
+      "'that' is null");
     PBErrCatch(CBoErr);
 
   }
@@ -2892,7 +3036,9 @@ bool CBoFileCheckNoCurlyBraceAtTail(
   if (cbo == NULL) {
 
     CBoErr->_type = PBErrTypeNullPointer;
-    sprintf(CBoErr->_msg, "'cbo' is null");
+    sprintf(
+      CBoErr->_msg,
+      "'cbo' is null");
     PBErrCatch(CBoErr);
 
   }
@@ -3018,7 +3164,9 @@ bool CBoFileCheckCharBeforeDot(
   if (that == NULL) {
 
     CBoErr->_type = PBErrTypeNullPointer;
-    sprintf(CBoErr->_msg, "'that' is null");
+    sprintf(
+      CBoErr->_msg,
+      "'that' is null");
     PBErrCatch(CBoErr);
 
   }
@@ -3026,7 +3174,9 @@ bool CBoFileCheckCharBeforeDot(
   if (cbo == NULL) {
 
     CBoErr->_type = PBErrTypeNullPointer;
-    sprintf(CBoErr->_msg, "'cbo' is null");
+    sprintf(
+      CBoErr->_msg,
+      "'cbo' is null");
     PBErrCatch(CBoErr);
 
   }
@@ -3186,7 +3336,9 @@ bool CBoFileCheckSpaceBeforeOpenCurlyBrace(
   if (that == NULL) {
 
     CBoErr->_type = PBErrTypeNullPointer;
-    sprintf(CBoErr->_msg, "'that' is null");
+    sprintf(
+      CBoErr->_msg,
+      "'that' is null");
     PBErrCatch(CBoErr);
 
   }
@@ -3194,7 +3346,9 @@ bool CBoFileCheckSpaceBeforeOpenCurlyBrace(
   if (cbo == NULL) {
 
     CBoErr->_type = PBErrTypeNullPointer;
-    sprintf(CBoErr->_msg, "'cbo' is null");
+    sprintf(
+      CBoErr->_msg,
+      "'cbo' is null");
     PBErrCatch(CBoErr);
 
   }
@@ -3346,7 +3500,9 @@ bool CBoFileCheckEmptyLineBeforeComment(
   if (that == NULL) {
 
     CBoErr->_type = PBErrTypeNullPointer;
-    sprintf(CBoErr->_msg, "'that' is null");
+    sprintf(
+      CBoErr->_msg,
+      "'that' is null");
     PBErrCatch(CBoErr);
 
   }
@@ -3354,7 +3510,9 @@ bool CBoFileCheckEmptyLineBeforeComment(
   if (cbo == NULL) {
 
     CBoErr->_type = PBErrTypeNullPointer;
-    sprintf(CBoErr->_msg, "'cbo' is null");
+    sprintf(
+      CBoErr->_msg,
+      "'cbo' is null");
     PBErrCatch(CBoErr);
 
   }
@@ -3456,7 +3614,7 @@ bool CBoFileCheckEmptyLineBeforeComment(
 
 }
 
-// Check the ident level of the lines of the
+// Check the indent level of the lines of the
 // CBoFile 'that' with the CBo 'cbo'
 // Return true if there was no problem, else false
 bool CBoFileCheckIndentLevel(
@@ -3467,7 +3625,9 @@ bool CBoFileCheckIndentLevel(
   if (that == NULL) {
 
     CBoErr->_type = PBErrTypeNullPointer;
-    sprintf(CBoErr->_msg, "'that' is null");
+    sprintf(
+      CBoErr->_msg,
+      "'that' is null");
     PBErrCatch(CBoErr);
 
   }
@@ -3475,7 +3635,9 @@ bool CBoFileCheckIndentLevel(
   if (cbo == NULL) {
 
     CBoErr->_type = PBErrTypeNullPointer;
-    sprintf(CBoErr->_msg, "'cbo' is null");
+    sprintf(
+      CBoErr->_msg,
+      "'cbo' is null");
     PBErrCatch(CBoErr);
 
   }
@@ -3630,6 +3792,206 @@ bool CBoFileCheckIndentLevel(
 
 }
 
+// Check there is no several arguments on one line of the
+// CBoFile 'that' with the CBo 'cbo'
+// Return true if there was no problem, else false
+bool CBoFileCheckSeveralArgOnOneLine(
+  CBoFile* const that,
+  CBo* const cbo) {
+
+#if BUILDMODE == 0
+  if (that == NULL) {
+
+    CBoErr->_type = PBErrTypeNullPointer;
+    sprintf(
+      CBoErr->_msg,
+      "'that' is null");
+    PBErrCatch(CBoErr);
+
+  }
+
+  if (cbo == NULL) {
+
+    CBoErr->_type = PBErrTypeNullPointer;
+    sprintf(
+      CBoErr->_msg,
+      "'cbo' is null");
+    PBErrCatch(CBoErr);
+
+  }
+
+#endif
+
+  // Declare a variable to memorize the success
+  bool success = true;
+
+  // Create a progress bar
+  ProgBarTxt progBar = ProgBarTxtCreateStatic();
+
+  // If the file is not empty
+  if (GSetNbElem(&(that->lines)) > 0) {
+
+    // Declare an iterator on the lines
+    GSetIterForward iter =
+      GSetIterForwardCreateStatic(&(that->lines));
+
+    // Loop on the lines
+    unsigned int iLine = 0;
+    do {
+
+      // Update and display the ProgBar
+      ProgBarTxtSet(
+        &progBar,
+        (float)iLine / (float)GSetNbElem(&(that->lines)));
+      fprintf(
+        cbo->stream,
+        "CheckSeveralArgOnOneLine %s\r",
+        ProgBarTxtGet(&progBar));
+      fflush(cbo->stream);
+
+      // Get the line
+      CBoLine* line = GSetIterGet(&iter);
+
+      // If the line is not a comment and not a precompiler command
+      if (
+        CBoLineIsComment(line) == false &&
+        CBoLineIsPrecompilCmd(line) == false) {
+
+        // Flag to escape the strings
+        bool flagQuote = false;
+        bool flagDoubleQuote = false;
+
+        // Variable to memorize the level in brackets and braces
+        unsigned int lvlBracket = 0;
+        unsigned int lvlBrace = 0;
+
+        // Declare a variable to memorize the position in the line
+        unsigned int pos = 0;
+
+        // Loop on the char of the line
+        do {
+
+          // If it's the beginning of a string
+          if (
+            flagQuote == false &&
+            line->str[pos] == '"' &&
+            pos > 0 &&
+            line->str[pos - 1] != '\\') {
+
+            // Update the flag
+            flagDoubleQuote = !flagDoubleQuote;
+
+          } else if (
+            flagDoubleQuote == false &&
+            line->str[pos] == '\'' &&
+            pos > 0 &&
+            line->str[pos - 1] != '\\') {
+
+            // Update the flag
+            flagQuote = !flagQuote;
+
+          }
+
+          // If we are not in a string
+          if (flagQuote == false && flagDoubleQuote == false) {
+
+            // If the character at current position is an opening
+            // bracket
+            if (line->str[pos] == '[') {
+
+              // Update the level
+              ++lvlBracket;
+
+            // Else, if the character at current position is a closing
+            // bracket
+            } else if (line->str[pos] == ']') {
+
+              // Update the level
+              --lvlBracket;
+
+            // Else, if the character at current position is an opening
+            // brace
+            } else if (line->str[pos] == '{') {
+
+              // Update the level
+              ++lvlBrace;
+
+            // Else, if the character at current position is a closing
+            // brace
+            } else if (line->str[pos] == '}') {
+
+              // Update the level
+              --lvlBrace;
+
+            // Else, if the character at current position is a comma
+            // and we are outside of brackets and braces and the comma
+            // is not at the tail of the line
+            } else if (
+              line->str[pos] == ',' &&
+              lvlBracket == 0 &&
+              lvlBrace == 0 &&
+              line->str[pos + 1] != '\0') {
+
+              // Update the success flag
+              success = false;
+
+              // Create the error
+              CBoError* error =
+                CBoErrorCreate(
+                  that,
+                  line,
+                  iLine + 1,
+                  CBoErrorType_SeveralArgOnOneLine);
+
+              // Add the error to the file
+              CBoFileAddError(
+                that,
+                error);
+
+            }
+
+          }
+
+          // Move to the next character
+          ++pos;
+
+        } while (line->str[pos] != '\0');
+
+      }
+
+      // Move to the next line
+      ++iLine;
+
+    } while (GSetIterStep(&iter));
+
+    // Update and display the ProgBar
+    ProgBarTxtSet(
+      &progBar,
+      1.0);
+    fprintf(
+      cbo->stream,
+      "CheckSeveralArgOnOneLine %s",
+      ProgBarTxtGet(&progBar));
+    if (success == true) {
+
+      fprintf(
+        cbo->stream,
+        " OK");
+
+    }
+
+    fprintf(
+      cbo->stream,
+      "\n");
+    fflush(cbo->stream);
+
+  }
+
+  // Return the successfull code
+  return success;
+
+}
+
 // Function to check if a line is a comment
 // Return true if it's a comment, else false
 bool CBoLineIsComment(const CBoLine* const that) {
@@ -3638,7 +4000,9 @@ bool CBoLineIsComment(const CBoLine* const that) {
   if (that == NULL) {
 
     CBoErr->_type = PBErrTypeNullPointer;
-    sprintf(CBoErr->_msg, "'that' is null");
+    sprintf(
+      CBoErr->_msg,
+      "'that' is null");
     PBErrCatch(CBoErr);
 
   }
@@ -3672,7 +4036,9 @@ bool CBoLineIsPrecompilCmd(const CBoLine* const that) {
   if (that == NULL) {
 
     CBoErr->_type = PBErrTypeNullPointer;
-    sprintf(CBoErr->_msg, "'that' is null");
+    sprintf(
+      CBoErr->_msg,
+      "'that' is null");
     PBErrCatch(CBoErr);
 
   }
@@ -3706,7 +4072,9 @@ unsigned int CBoLineGetPosHead(const CBoLine* const that) {
   if (that == NULL) {
 
     CBoErr->_type = PBErrTypeNullPointer;
-    sprintf(CBoErr->_msg, "'that' is null");
+    sprintf(
+      CBoErr->_msg,
+      "'that' is null");
     PBErrCatch(CBoErr);
 
   }
@@ -3739,7 +4107,9 @@ unsigned int CBoLineGetLength(const CBoLine* const that) {
   if (that == NULL) {
 
     CBoErr->_type = PBErrTypeNullPointer;
-    sprintf(CBoErr->_msg, "'that' is null");
+    sprintf(
+      CBoErr->_msg,
+      "'that' is null");
     PBErrCatch(CBoErr);
 
   }
@@ -3762,7 +4132,9 @@ unsigned int CBoLineGetPosCloseCharFrom(
   if (that == NULL) {
 
     CBoErr->_type = PBErrTypeNullPointer;
-    sprintf(CBoErr->_msg, "'that' is null");
+    sprintf(
+      CBoErr->_msg,
+      "'that' is null");
     PBErrCatch(CBoErr);
 
   }
@@ -3874,7 +4246,9 @@ unsigned int CBoLineGetPosOpenCharFrom(
   if (that == NULL) {
 
     CBoErr->_type = PBErrTypeNullPointer;
-    sprintf(CBoErr->_msg, "'that' is null");
+    sprintf(
+      CBoErr->_msg,
+      "'that' is null");
     PBErrCatch(CBoErr);
 
   }
@@ -3985,7 +4359,9 @@ unsigned int CBoLineGetPosLast(
   if (that == NULL) {
 
     CBoErr->_type = PBErrTypeNullPointer;
-    sprintf(CBoErr->_msg, "'that' is null");
+    sprintf(
+      CBoErr->_msg,
+      "'that' is null");
     PBErrCatch(CBoErr);
 
   }
