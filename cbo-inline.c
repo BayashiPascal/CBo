@@ -4,7 +4,7 @@
 
 // Get the number of file to check
 #if BUILDMODE != 0
-inline
+static inline
 #endif
 int CBoGetNbFiles(const CBo* const that) {
 
