@@ -309,7 +309,9 @@ bool CBoLineIsComment(const CBoLine* const that);
 
 // Function to check if a line is a precompilation command
 // Return true if it's a comment, else false
-bool CBoLineIsPrecompilCmd(const CBoLine* const that);
+bool CBoFileIsLinePrecompilCmd(
+  const CBoFile* const that,
+  const unsigned int iLine);
 
 // Return the position of the first character different of space or tab
 // or 0 if the line is empty
@@ -2715,9 +2717,13 @@ bool CBoFileCheckSpaceAroundOperator(
       unsigned int length = CBoLineGetLength(line);
 
       // If the line is not a comment or a precompiler command
+      bool isPrecompilCmd =
+        CBoFileIsLinePrecompilCmd(
+          that,
+          iLine);
       if (
         CBoLineIsComment(line) == false &&
-        CBoLineIsPrecompilCmd(line) == false) {
+        isPrecompilCmd == false) {
 
         // Declare two flags to memorize the strings in the code
         bool flagQuote = false;
@@ -3685,6 +3691,12 @@ bool CBoFileCheckIndentLevel(
       // Get the length of the line
       unsigned int length = strlen(line->str);
 
+      // Check if the line is a precompilation command
+      bool isPrecompilCmd =
+        CBoFileIsLinePrecompilCmd(
+          that,
+          iLine);
+
       // If the line is a comment
       if (CBoLineIsComment(line) == true) {
 
@@ -3711,33 +3723,10 @@ bool CBoFileCheckIndentLevel(
 
         }
 
-      // Else, if the line is a precompiler command
-      } else if (CBoLineIsPrecompilCmd(line) == true) {
-
-        // If the line is not
-        if (posHead != 0) {
-
-          // Update the success flag
-          success = false;
-
-          // Create the error
-          CBoError* error =
-            CBoErrorCreate(
-              that,
-              line,
-              iLine + 1,
-              CBoErrorType_IndentLevel);
-
-          // Add the error to the file
-          CBoFileAddError(
-            that,
-            error);
-
-        }
-
       // Else, the line is not a comment or precompiler command,
       // if the line is not correctly indented and not empty
       } else if (
+        isPrecompilCmd == false &&
         posHead != length &&
         posHead != line->indent) {
 
@@ -3853,9 +3842,13 @@ bool CBoFileCheckSeveralArgOnOneLine(
       CBoLine* line = GSetIterGet(&iter);
 
       // If the line is not a comment and not a precompiler command
+      bool isPrecompilCmd =
+        CBoFileIsLinePrecompilCmd(
+          that,
+          iLine);
       if (
         CBoLineIsComment(line) == false &&
-        CBoLineIsPrecompilCmd(line) == false) {
+        isPrecompilCmd == false) {
 
         // Flag to escape the strings
         bool flagQuote = false;
@@ -4030,7 +4023,9 @@ bool CBoLineIsComment(const CBoLine* const that) {
 
 // Function to check if a line is a precompilation command
 // Return true if it's a comment, else false
-bool CBoLineIsPrecompilCmd(const CBoLine* const that) {
+bool CBoFileIsLinePrecompilCmd(
+  const CBoFile* const that,
+  const unsigned int iLine) {
 
 #if BUILDMODE == 0
   if (that == NULL) {
@@ -4045,17 +4040,45 @@ bool CBoLineIsPrecompilCmd(const CBoLine* const that) {
 
 #endif
 
+  // Get the line
+  CBoLine* line =
+    GSetGet(
+      &(that->lines),
+      iLine);
+
   // Get the position of the head of the line
-  unsigned int posHead = CBoLineGetPosHead(that);
+  unsigned int posHead = CBoLineGetPosHead(line);
 
   // If the line starts with '#'
-  if (that->str[posHead] == '#') {
+  if (line->str[posHead] == '#') {
 
     // The line is a precompiler command
     return true;
 
   // Else, the line doesn't start with '#'
   } else {
+
+    // If the previous line is an unterminated precompilation command
+    if (iLine > 0) {
+
+      CBoLine* prevLine =
+        GSetGet(
+          &(that->lines),
+          iLine - 1);
+      unsigned int posLast = CBoLineGetLength(prevLine) - 1;
+      bool prevLineIsComment =
+        CBoFileIsLinePrecompilCmd(
+          that,
+          iLine - 1);
+      if (
+        prevLineIsComment == true &&
+        prevLine->str[posLast] == '\\') {
+
+        return true;
+
+      }
+
+    }
 
     // The line is not a precompiler command
     return false;
