@@ -72,6 +72,7 @@ typedef enum CBoErrorType {
   CBoErrorType_EmptyLineBeforeComment,
   CBoErrorType_IndentLevel,
   CBoErrorType_SeveralArgOnOneLine,
+  CBoErrorType_ArgumentsUnaligned,
 
 } CBoErrorType;
 
@@ -122,6 +123,7 @@ const char* cboErrorTypeStr[] = {
   "No empty line before comment",
   "Indent level is incorrect",
   "Several arguments on the same line",
+  "Arguments of the function are not correctly aligned",
 
 };
 
@@ -140,13 +142,13 @@ void CBoFileUpdateIndentLvlLines(CBoFile* const that);
 
 // Function to add the CBoError 'error' to the CBoFile 'that'
 void CBoFileAddError(
-  CBoFile* const that,
+   CBoFile* const that,
   CBoError* const error);
 
 // Display the errors of the CBoFile 'that' on the FILE 'stream'
 void CBoFilePrintErrors(
   CBoFile* const that,
-  FILE* stream);
+           FILE* stream);
 
 // Function to create a new CBoLine from its content,
 // Return a pointer to the new CBoLine
@@ -160,14 +162,14 @@ void CBoLineFree(CBoLine** const that);
 // found
 unsigned int CBoLineGetPosLast(
   const CBoLine* const that,
-  const char c);
+            const char c);
 
 // Function to create a new CBoError from its file, line, index of line
 // and type
 // Return a pointer to the new CBoError
 CBoError* CBoErrorCreate(
-  CBoFile* const file,
-  CBoLine* const line,
+      CBoFile* const file,
+      CBoLine* const line,
   const unsigned int iLine,
   const CBoErrorType type);
 
@@ -177,13 +179,13 @@ void CBoErrorFree(CBoError** const that);
 // Function to display the CBoError 'that' on the stream 'stream'
 void CBoErrorPrint(
   const CBoError* const that,
-  FILE* const stream);
+            FILE* const stream);
 
 // Check the CBoFile 'that' with the CBo 'cbo'
 // Return true if there was no problem, else false
 bool CBoFileCheck(
   CBoFile* const that,
-  CBo* const cbo);
+      CBo* const cbo);
 
 // Function to detect the type of a file from its path
 // Return a CBoFileType
@@ -196,112 +198,119 @@ unsigned int CBoFileGetNbError(const CBoFile* const that);
 // Return true if there was no problem, else false
 bool CBoFileCheckLineLength(
   CBoFile* const that,
-  CBo* const cbo);
+      CBo* const cbo);
 
 // Check there is no trailing spaces on the lines of the CBoFile 'that'
 // with the CBo 'cbo'
 // Return true if there was no problem, else false
 bool CBoFileCheckTrailingSpace(
   CBoFile* const that,
-  CBo* const cbo);
+      CBo* const cbo);
 
 // Check there is an empty line before closing curly braces of the
 // CBoFile 'that' with the CBo 'cbo'
 // Return true if there was no problem, else false
 bool CBoFileCheckEmptyLineBeforeClosingCurlyBrace(
   CBoFile* const that,
-  CBo* const cbo);
+      CBo* const cbo);
 
 // Check there is an empty line after opening curly braces of the
 // CBoFile 'that' with the CBo 'cbo'
 // Return true if there was no problem, else false
 bool CBoFileCheckEmptyLineAfterOpeningCurlyBrace(
   CBoFile* const that,
-  CBo* const cbo);
+      CBo* const cbo);
 
 // Check there is an empty line after closing curly braces of the
 // CBoFile 'that' with the CBo 'cbo'
 // Return true if there was no problem, else false
 bool CBoFileCheckEmptyLineAfterClosingCurlyBrace(
   CBoFile* const that,
-  CBo* const cbo);
+      CBo* const cbo);
 
 // Check there is no several blank lines in the
 // CBoFile 'that' with the CBo 'cbo'
 // Return true if there was no problem, else false
 bool CBoFileCheckSeveralBlankLines(
   CBoFile* const that,
-  CBo* const cbo);
+      CBo* const cbo);
 
 // Check there is a space after a comma and no before in lines of the
 // CBoFile 'that' with the CBo 'cbo'
 // Return true if there was no problem, else false
 bool CBoFileCheckSpaceAroundComma(
   CBoFile* const that,
-  CBo* const cbo);
+      CBo* const cbo);
 
 // Check there is no space before semicolon in lines of the
 // CBoFile 'that' with the CBo 'cbo'
 // Return true if there was no problem, else false
 bool CBoFileCheckSpaceAroundSemicolon(
   CBoFile* const that,
-  CBo* const cbo);
+      CBo* const cbo);
 
 // Check there is a space around arythmetic/boolean operators
 // in lines of the CBoFile 'that' with the CBo 'cbo'
 // Return true if there was no problem, else false
 bool CBoFileCheckSpaceAroundOperator(
   CBoFile* const that,
-  CBo* const cbo);
+      CBo* const cbo);
 
 // Check there is no opening curly brace on the head of lines of the
 // CBoFile 'that' with the CBo 'cbo'
 // Return true if there was no problem, else false
 bool CBoFileCheckNoCurlyBraceAtHead(
   CBoFile* const that,
-  CBo* const cbo);
+      CBo* const cbo);
 
 // Check there is no closing curly brace on the tail of lines of the
 // CBoFile 'that' with the CBo 'cbo'
 // Return true if there was no problem, else false
 bool CBoFileCheckNoCurlyBraceAtTail(
   CBoFile* const that,
-  CBo* const cbo);
+      CBo* const cbo);
 
 // Check that '.' are surrounded by [a-zA-Z0-9] or are at head of line
 // on the lines of the CBoFile 'that' with the CBo 'cbo'
 // Return true if there was no problem, else false
 bool CBoFileCheckCharBeforeDot(
   CBoFile* const that,
-  CBo* const cbo);
+      CBo* const cbo);
 
 // Check there is a space or opening curly brace before opening curly
 // braces on the lines of the CBoFile 'that' with the CBo 'cbo'
 // Return true if there was no problem, else false
 bool CBoFileCheckSpaceBeforeOpenCurlyBrace(
   CBoFile* const that,
-  CBo* const cbo);
+      CBo* const cbo);
 
 // Check there is an empty line before comments of the
 // CBoFile 'that' with the CBo 'cbo'
 // Return true if there was no problem, else false
 bool CBoFileCheckEmptyLineBeforeComment(
   CBoFile* const that,
-  CBo* const cbo);
+      CBo* const cbo);
 
 // Check the indent level of the lines of the
 // CBoFile 'that' with the CBo 'cbo'
 // Return true if there was no problem, else false
 bool CBoFileCheckIndentLevel(
   CBoFile* const that,
-  CBo* const cbo);
+      CBo* const cbo);
 
 // Check there is no several arguments on one line of the
 // CBoFile 'that' with the CBo 'cbo'
 // Return true if there was no problem, else false
 bool CBoFileCheckSeveralArgOnOneLine(
   CBoFile* const that,
-  CBo* const cbo);
+      CBo* const cbo);
+
+// Check the alignment of arguments in function declaration of the
+// CBoFile 'that' with the CBo 'cbo'
+// Return true if there was no problem, else false
+bool CBoFileCheckAlignmentArg(
+  CBoFile* const that,
+      CBo* const cbo);
 
 // Function to check if a line is a comment
 // Return true if it's a comment, else false
@@ -311,7 +320,7 @@ bool CBoLineIsComment(const CBoLine* const that);
 // Return true if it's a comment, else false
 bool CBoFileIsLinePrecompilCmd(
   const CBoFile* const that,
-  const unsigned int iLine);
+    const unsigned int iLine);
 
 // Return the position of the first character different of space or tab
 // or 0 if the line is empty
@@ -325,21 +334,21 @@ unsigned int CBoLineGetLength(const CBoLine* const that);
 // Return the position if ofund, or 'from' if not found
 unsigned int CBoLineGetPosCloseCharFrom(
   const CBoLine* const that,
-  const unsigned int from);
+    const unsigned int from);
 
 // Function to get the position of the opening character from the
 // closing character at position 'from'
 // Return the position if found, or 'from' if not found
 unsigned int CBoLineGetPosOpenCharFrom(
   const CBoLine* const that,
-  const unsigned int from);
+    const unsigned int from);
 
 // Return the position of the last character 'c' excluding the string
 // content, or the length of the string if the character could not be
 // found
 unsigned int CBoLineGetPosLast(
   const CBoLine* const that,
-  const char c);
+            const char c);
 
 // ================ Functions implementation ==================
 
@@ -399,8 +408,8 @@ void CBoFree(CBo** const that) {
 // Process the arguments from the command line
 // Return true if the arguments were correct, else false
 bool CBoProcessCmdLineArguments(
-  CBo* const that,
-  const int argc,
+          CBo* const that,
+           const int argc,
   const char** const argv) {
 
 #if BUILDMODE == 0
@@ -1141,7 +1150,7 @@ void CBoFileUpdateIndentLvlLines(CBoFile* const that) {
 
 // Function to add the CBoError 'error' to the CBoFile 'that'
 void CBoFileAddError(
-  CBoFile* const that,
+   CBoFile* const that,
   CBoError* const error) {
 
 #if BUILDMODE == 0
@@ -1178,7 +1187,7 @@ void CBoFileAddError(
 // Display the errors of the CBoFile 'that' on the FILE 'stream'
 void CBoFilePrintErrors(
   CBoFile* const that,
-  FILE* stream) {
+           FILE* stream) {
 
 #if BUILDMODE == 0
   if (that == NULL) {
@@ -1285,8 +1294,8 @@ void CBoLineFree(CBoLine** const that) {
 // and type
 // Return a pointer to the new CBoError
 CBoError* CBoErrorCreate(
-  CBoFile* const file,
-  CBoLine* const line,
+      CBoFile* const file,
+      CBoLine* const line,
   const unsigned int iLine,
   const CBoErrorType type) {
 
@@ -1345,7 +1354,7 @@ void CBoErrorFree(CBoError** const that) {
 // Function to display the CBoError 'that' on the stream 'stream'
 void CBoErrorPrint(
   const CBoError* const that,
-  FILE* const stream) {
+            FILE* const stream) {
 
 #if BUILDMODE == 0
   if (that == NULL) {
@@ -1417,7 +1426,7 @@ void CBoErrorPrint(
 // Return true if there was no problem, else false
 bool CBoFileCheck(
   CBoFile* const that,
-  CBo* const cbo) {
+      CBo* const cbo) {
 
 #if BUILDMODE == 0
   if (that == NULL) {
@@ -1534,6 +1543,10 @@ bool CBoFileCheck(
       CBoFileCheckSeveralArgOnOneLine(
         that,
         cbo);
+    success &=
+      CBoFileCheckAlignmentArg(
+        that,
+        cbo);
 
     // If there is still no problem, check the indentation only
     if (success == true) {
@@ -1556,7 +1569,7 @@ bool CBoFileCheck(
 // Return true if there was no problem, else false
 bool CBoFileCheckLineLength(
   CBoFile* const that,
-  CBo* const cbo) {
+      CBo* const cbo) {
 
 #if BUILDMODE == 0
   if (that == NULL) {
@@ -1670,7 +1683,7 @@ bool CBoFileCheckLineLength(
 // Return true if there was no problem, else false
 bool CBoFileCheckTrailingSpace(
   CBoFile* const that,
-  CBo* const cbo) {
+      CBo* const cbo) {
 
 #if BUILDMODE == 0
   if (that == NULL) {
@@ -1787,7 +1800,7 @@ bool CBoFileCheckTrailingSpace(
 // Return true if there was no problem, else false
 bool CBoFileCheckEmptyLineBeforeClosingCurlyBrace(
   CBoFile* const that,
-  CBo* const cbo) {
+      CBo* const cbo) {
 
 #if BUILDMODE == 0
   if (that == NULL) {
@@ -1923,7 +1936,7 @@ bool CBoFileCheckEmptyLineBeforeClosingCurlyBrace(
 // Return true if there was no problem, else false
 bool CBoFileCheckEmptyLineAfterOpeningCurlyBrace(
   CBoFile* const that,
-  CBo* const cbo) {
+      CBo* const cbo) {
 
 #if BUILDMODE == 0
   if (that == NULL) {
@@ -2051,7 +2064,7 @@ bool CBoFileCheckEmptyLineAfterOpeningCurlyBrace(
 // Return true if there was no problem, else false
 bool CBoFileCheckEmptyLineAfterClosingCurlyBrace(
   CBoFile* const that,
-  CBo* const cbo) {
+      CBo* const cbo) {
 
 #if BUILDMODE == 0
   if (that == NULL) {
@@ -2180,7 +2193,7 @@ bool CBoFileCheckEmptyLineAfterClosingCurlyBrace(
 // Return true if there was no problem, else false
 bool CBoFileCheckSeveralBlankLines(
   CBoFile* const that,
-  CBo* const cbo) {
+      CBo* const cbo) {
 
 #if BUILDMODE == 0
   if (that == NULL) {
@@ -2305,7 +2318,7 @@ bool CBoFileCheckSeveralBlankLines(
 // Return true if there was no problem, else false
 bool CBoFileCheckSpaceAroundComma(
   CBoFile* const that,
-  CBo* const cbo) {
+      CBo* const cbo) {
 
 #if BUILDMODE == 0
   if (that == NULL) {
@@ -2493,7 +2506,7 @@ bool CBoFileCheckSpaceAroundComma(
 // Return true if there was no problem, else false
 bool CBoFileCheckSpaceAroundSemicolon(
   CBoFile* const that,
-  CBo* const cbo) {
+      CBo* const cbo) {
 
 #if BUILDMODE == 0
   if (that == NULL) {
@@ -2651,7 +2664,7 @@ bool CBoFileCheckSpaceAroundSemicolon(
 // Return true if there was no problem, else false
 bool CBoFileCheckSpaceAroundOperator(
   CBoFile* const that,
-  CBo* const cbo) {
+      CBo* const cbo) {
 
 #if BUILDMODE == 0
   if (that == NULL) {
@@ -2898,7 +2911,7 @@ bool CBoFileCheckSpaceAroundOperator(
 // Return true if there was no problem, else false
 bool CBoFileCheckNoCurlyBraceAtHead(
   CBoFile* const that,
-  CBo* const cbo) {
+      CBo* const cbo) {
 
 #if BUILDMODE == 0
   if (that == NULL) {
@@ -3026,7 +3039,7 @@ bool CBoFileCheckNoCurlyBraceAtHead(
 // Return true if there was no problem, else false
 bool CBoFileCheckNoCurlyBraceAtTail(
   CBoFile* const that,
-  CBo* const cbo) {
+      CBo* const cbo) {
 
 #if BUILDMODE == 0
   if (that == NULL) {
@@ -3164,7 +3177,7 @@ bool CBoFileCheckNoCurlyBraceAtTail(
 // Return true if there was no problem, else false
 bool CBoFileCheckCharBeforeDot(
   CBoFile* const that,
-  CBo* const cbo) {
+      CBo* const cbo) {
 
 #if BUILDMODE == 0
   if (that == NULL) {
@@ -3336,7 +3349,7 @@ bool CBoFileCheckCharBeforeDot(
 // Return true if there was no problem, else false
 bool CBoFileCheckSpaceBeforeOpenCurlyBrace(
   CBoFile* const that,
-  CBo* const cbo) {
+      CBo* const cbo) {
 
 #if BUILDMODE == 0
   if (that == NULL) {
@@ -3500,7 +3513,7 @@ bool CBoFileCheckSpaceBeforeOpenCurlyBrace(
 // Return true if there was no problem, else false
 bool CBoFileCheckEmptyLineBeforeComment(
   CBoFile* const that,
-  CBo* const cbo) {
+      CBo* const cbo) {
 
 #if BUILDMODE == 0
   if (that == NULL) {
@@ -3625,7 +3638,7 @@ bool CBoFileCheckEmptyLineBeforeComment(
 // Return true if there was no problem, else false
 bool CBoFileCheckIndentLevel(
   CBoFile* const that,
-  CBo* const cbo) {
+      CBo* const cbo) {
 
 #if BUILDMODE == 0
   if (that == NULL) {
@@ -3697,8 +3710,54 @@ bool CBoFileCheckIndentLevel(
           that,
           iLine);
 
-      // If the line is a comment
-      if (CBoLineIsComment(line) == true) {
+      // If the line is a function declaration
+      if (
+        CBoLineIsComment(line) == false &&
+        isPrecompilCmd == false &&
+        posHead == 0 &&
+        length > 0 &&
+        line->str[length - 1] == '(') {
+
+        // Variable to memorize the level in parenthesis
+        unsigned int lvlPar = 1;
+
+        // Skip the lines until the end of the function argument list
+        do {
+
+          // Get the line of the current argument
+          line = GSetIterGet(&iter);
+
+          // Declare a variable to memorize the position in the line
+          unsigned int pos = 0;
+
+          // Loop on the char of the line
+          do {
+
+            // If it's a opening parenthesis
+            if (line->str[pos] == '(') {
+
+              // Increase the level of parenthesis
+              ++lvlPar;
+
+            // Else if it's a closing parenthesis
+            } else if (line->str[pos] == ')') {
+
+              // Decrease the level of parenthesis
+              --lvlPar;
+
+            }
+
+            // Move to the next character
+            ++pos;
+
+          } while(line->str[pos] != '\0');
+
+        } while (
+          lvlPar > 0 &&
+          GSetIterStep(&iter));
+
+      // Else, if the line is a comment
+      } else if (CBoLineIsComment(line) == true) {
 
         // If the line is not indented as the next line
         if (
@@ -3786,7 +3845,7 @@ bool CBoFileCheckIndentLevel(
 // Return true if there was no problem, else false
 bool CBoFileCheckSeveralArgOnOneLine(
   CBoFile* const that,
-  CBo* const cbo) {
+      CBo* const cbo) {
 
 #if BUILDMODE == 0
   if (that == NULL) {
@@ -3985,6 +4044,262 @@ bool CBoFileCheckSeveralArgOnOneLine(
 
 }
 
+// Check the alignment of arguments in function declaration of the
+// CBoFile 'that' with the CBo 'cbo'
+// Return true if there was no problem, else false
+bool CBoFileCheckAlignmentArg(
+  CBoFile* const that,
+      CBo* const cbo) {
+
+#if BUILDMODE == 0
+  if (that == NULL) {
+
+    CBoErr->_type = PBErrTypeNullPointer;
+    sprintf(
+      CBoErr->_msg,
+      "'that' is null");
+    PBErrCatch(CBoErr);
+
+  }
+
+  if (cbo == NULL) {
+
+    CBoErr->_type = PBErrTypeNullPointer;
+    sprintf(
+      CBoErr->_msg,
+      "'cbo' is null");
+    PBErrCatch(CBoErr);
+
+  }
+
+#endif
+
+  // Declare a variable to memorize the success
+  bool success = true;
+
+  // Create a progress bar
+  ProgBarTxt progBar = ProgBarTxtCreateStatic();
+
+  // If the file is not empty
+  if (GSetNbElem(&(that->lines)) > 0) {
+
+    // Declare an iterator on the lines
+    GSetIterForward iter =
+      GSetIterForwardCreateStatic(&(that->lines));
+
+    // Loop on the lines
+    unsigned int iLine = 0;
+    do {
+
+      // Update and display the ProgBar
+      ProgBarTxtSet(
+        &progBar,
+        (float)iLine / (float)GSetNbElem(&(that->lines)));
+      fprintf(
+        cbo->stream,
+        "CBoFileCheckAlignmentArg %s\r",
+        ProgBarTxtGet(&progBar));
+      fflush(cbo->stream);
+
+      // Get the line
+      CBoLine* line = GSetIterGet(&iter);
+
+      // Get the position of the head and tail of the line
+      unsigned int posHead = CBoLineGetPosHead(line);
+      unsigned int lineLength = CBoLineGetLength(line);
+
+      // If the line is not a comment and not a precompiler command
+      // and is a function declaration with several arguments
+      bool isPrecompilCmd =
+        CBoFileIsLinePrecompilCmd(
+          that,
+          iLine);
+      if (
+        CBoLineIsComment(line) == false &&
+        isPrecompilCmd == false &&
+        posHead == 0 &&
+        lineLength > 0 &&
+        line->str[lineLength - 1] == '(') {
+
+        // Variable to memorize the level in parenthesis
+        unsigned int lvlPar = 1;
+
+        // Declare a new iterator to iterate on the arguments
+        GSetIterForward iterArg = iter;
+        GSetIterStep(&iterArg);
+
+        // Declare a variable to memorize the max position of the
+        // last space
+        unsigned int posMaxLastSpace = 0;
+
+        // Loop until the end of the function argument list
+        do {
+
+          // Get the line of the current argument
+          CBoLine* lineArg = GSetIterGet(&iterArg);
+
+          // Declare a variable to memorize the position in the line
+          unsigned int pos = 0;
+
+          // Loop on the char of the line
+          do {
+
+            // If it's a opening parenthesis
+            if (lineArg->str[pos] == '(') {
+
+              // Increase the level of parenthesis
+              ++lvlPar;
+
+            // Else if it's a closing parenthesis
+            } else if (lineArg->str[pos] == ')') {
+
+              // Decrease the level of parenthesis
+              --lvlPar;
+
+            // Else if it's a space inside the parenthesis
+            } else if (
+              lvlPar > 0 &&
+              lineArg->str[pos] == ' ') {
+
+              if (pos > posMaxLastSpace) {
+
+                posMaxLastSpace = pos;
+
+              }
+
+            }
+
+            // Move to the next character
+            ++pos;
+
+          } while(lineArg->str[pos] != '\0');
+
+        } while (
+          lvlPar > 0 &&
+          GSetIterStep(&iterArg));
+
+        // Reset the level in parenthesis
+        lvlPar = 1;
+
+        // Reset the iterator to iterate on the arguments
+        iterArg = iter;
+        GSetIterStep(&iterArg);
+
+        // Memorize the index of the argument line
+        unsigned int iLineArg = iLine + 1;
+
+        // Loop once again on the argument list to check the position
+        // of the last space in each line against the max position in
+        // all lines
+        do {
+
+          // Declare a variable to memorize the position of the
+          // last space
+          unsigned int posLastSpace = 0;
+
+          // Get the line of the current argument
+          CBoLine* lineArg = GSetIterGet(&iterArg);
+
+          // Declare a variable to memorize the position in the line
+          unsigned int pos = 0;
+
+          // Loop on the char of the line
+          do {
+
+            // If it's a opening parenthesis
+            if (lineArg->str[pos] == '(') {
+
+              // Increase the level of parenthesis
+              ++lvlPar;
+
+            // Else if it's a closing parenthesis
+            } else if (lineArg->str[pos] == ')') {
+
+              // Decrease the level of parenthesis
+              --lvlPar;
+
+            // Else if it's a space inside the parenthesis
+            } else if (
+              lvlPar > 0 &&
+              lineArg->str[pos] == ' ') {
+
+              if (pos > posLastSpace) {
+
+                posLastSpace = pos;
+
+              }
+
+            }
+
+            // Move to the next character
+            ++pos;
+
+          } while(lineArg->str[pos] != '\0');
+
+          // If the position of the last space is not equal to the
+          // max position in the list of arguments
+          if (posLastSpace != posMaxLastSpace) {
+
+              // Update the success flag
+              success = false;
+
+              // Create the error
+              CBoError* error =
+                CBoErrorCreate(
+                  that,
+                  lineArg,
+                  iLineArg + 1,
+                  CBoErrorType_ArgumentsUnaligned);
+
+              // Add the error to the file
+              CBoFileAddError(
+                that,
+                error);
+
+          }
+
+          // Move to the next argument line
+          ++iLineArg;
+
+        } while (
+          lvlPar > 0 &&
+          GSetIterStep(&iterArg));
+
+      }
+
+      // Move to the next line
+      ++iLine;
+
+    } while (GSetIterStep(&iter));
+
+    // Update and display the ProgBar
+    ProgBarTxtSet(
+      &progBar,
+      1.0);
+    fprintf(
+      cbo->stream,
+      "CBoFileCheckAlignmentArg %s",
+      ProgBarTxtGet(&progBar));
+    if (success == true) {
+
+      fprintf(
+        cbo->stream,
+        " OK");
+
+    }
+
+    fprintf(
+      cbo->stream,
+      "\n");
+    fflush(cbo->stream);
+
+  }
+
+  // Return the successfull code
+  return success;
+
+}
+
 // Function to check if a line is a comment
 // Return true if it's a comment, else false
 bool CBoLineIsComment(const CBoLine* const that) {
@@ -4025,7 +4340,7 @@ bool CBoLineIsComment(const CBoLine* const that) {
 // Return true if it's a comment, else false
 bool CBoFileIsLinePrecompilCmd(
   const CBoFile* const that,
-  const unsigned int iLine) {
+    const unsigned int iLine) {
 
 #if BUILDMODE == 0
   if (that == NULL) {
@@ -4149,7 +4464,7 @@ unsigned int CBoLineGetLength(const CBoLine* const that) {
 // Return the position if found, or 'from' if not found
 unsigned int CBoLineGetPosCloseCharFrom(
   const CBoLine* const that,
-  const unsigned int from) {
+    const unsigned int from) {
 
 #if BUILDMODE == 0
   if (that == NULL) {
@@ -4263,7 +4578,7 @@ unsigned int CBoLineGetPosCloseCharFrom(
 // Return the position if found, or 'from' if not found
 unsigned int CBoLineGetPosOpenCharFrom(
   const CBoLine* const that,
-  const unsigned int from) {
+    const unsigned int from) {
 
 #if BUILDMODE == 0
   if (that == NULL) {
@@ -4376,7 +4691,7 @@ unsigned int CBoLineGetPosOpenCharFrom(
 // found
 unsigned int CBoLineGetPosLast(
   const CBoLine* const that,
-  const char c) {
+            const char c) {
 
 #if BUILDMODE == 0
   if (that == NULL) {

@@ -46,8 +46,8 @@ void CBoFree(CBo** const that);
 // Process the arguments from the command line
 // Return true if the arguments were correct, else false
 bool CBoProcessCmdLineArguments(
-  CBo* const that,
-  const int argc,
+          CBo* const that,
+           const int argc,
   const char** const argv);
 
 // Check the files of the CBo 'that'

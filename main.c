@@ -3,7 +3,7 @@
 #include "cbo.h"
 
 int main(
-  int argc,
+                 int argc,
   const char** const argv) {
 
   // Declare a variable to memorize the returned code
