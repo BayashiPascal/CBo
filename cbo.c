@@ -74,6 +74,7 @@ typedef enum CBoErrorType {
   CBoErrorType_SeveralArgOnOneLine,
   CBoErrorType_ArgumentsUnaligned,
   CBoErrorType_IndentTab,
+  CBoErrorType_EmptyLineBeforeCase,
 
 } CBoErrorType;
 
@@ -126,6 +127,7 @@ const char* cboErrorTypeStr[] = {
   "Several arguments on the same line",
   "Arguments of the function are not correctly aligned",
   "Don't use tab to indent lines",
+  "No empty line or comment before case",
 
 };
 
@@ -311,6 +313,13 @@ bool CBoFileCheckSeveralArgOnOneLine(
 // CBoFile 'that' with the CBo 'cbo'
 // Return true if there was no problem, else false
 bool CBoFileCheckTabIndent(
+  CBoFile* const that,
+      CBo* const cbo);
+
+// Check there is an empty line or comment before 'case' in lines of the
+// CBoFile 'that' with the CBo 'cbo'
+// Return true if there was no problem, else false
+bool CBoFileCheckEmptyLineBeforeCase(
   CBoFile* const that,
       CBo* const cbo);
 
@@ -1558,6 +1567,10 @@ bool CBoFileCheck(
         cbo);
     success &=
       CBoFileCheckAlignmentArg(
+        that,
+        cbo);
+    success &=
+      CBoFileCheckEmptyLineBeforeCase(
         that,
         cbo);
 
@@ -3979,6 +3992,153 @@ bool CBoFileCheckTabIndent(
 
 }
 
+// Check there is an empty line or comment before 'case' in lines of the
+// CBoFile 'that' with the CBo 'cbo'
+// Return true if there was no problem, else false
+bool CBoFileCheckEmptyLineBeforeCase(
+  CBoFile* const that,
+      CBo* const cbo) {
+
+#if BUILDMODE == 0
+  if (that == NULL) {
+
+    CBoErr->_type = PBErrTypeNullPointer;
+    sprintf(
+      CBoErr->_msg,
+      "'that' is null");
+    PBErrCatch(CBoErr);
+
+  }
+
+  if (cbo == NULL) {
+
+    CBoErr->_type = PBErrTypeNullPointer;
+    sprintf(
+      CBoErr->_msg,
+      "'cbo' is null");
+    PBErrCatch(CBoErr);
+
+  }
+
+#endif
+
+  // Declare a variable to memorize the success
+  bool success = true;
+
+  // Create a progress bar
+  ProgBarTxt progBar = ProgBarTxtCreateStatic();
+
+  // If the file is not empty
+  if (GSetNbElem(&(that->lines)) > 0) {
+
+    // Declare an iterator on the lines
+    GSetIterForward iter =
+      GSetIterForwardCreateStatic(&(that->lines));
+
+    // Loop on the lines
+    unsigned int iLine = 0;
+    do {
+
+      // Update and display the ProgBar
+      ProgBarTxtSet(
+        &progBar,
+        (float)iLine / (float)GSetNbElem(&(that->lines)));
+      fprintf(
+        cbo->stream,
+        "CheckEmptyLineBeforeCase %s\r",
+        ProgBarTxtGet(&progBar));
+      fflush(cbo->stream);
+
+      // Get the line
+      CBoLine* line = GSetIterGet(&iter);
+
+      // Get the next line
+      GSetIterForward iterNext = iter;
+      GSetIterStep(&iterNext);
+      CBoLine* nextLine = GSetIterGet(&iterNext);
+
+      // If there is a next line
+      if (nextLine != NULL) {
+
+        // Get the position of the head of the next line
+        unsigned int posHead = CBoLineGetPosHead(nextLine);
+
+        // Check if the next line starts with 'case ' or 'default:'
+        char *posCase =
+          strstr(
+            nextLine->str + posHead,
+            "case ");
+        if (posCase == NULL) {
+
+          posCase =
+            strstr(
+              nextLine->str + posHead,
+              "default:");
+
+        }
+
+        bool startsWithCase = (posCase == nextLine->str + posHead);
+
+        // If the next line starts with 'case ' and the current line
+        // is nor a blank line nor a comment
+        if (
+          CBoLineIsComment(line) == false &&
+          line->str[0] != '\0' &&
+          startsWithCase == true) {
+
+          // Update the success flag
+          success = false;
+
+          // Create the error
+          CBoError* error =
+            CBoErrorCreate(
+              that,
+              nextLine,
+              iLine + 2,
+              CBoErrorType_EmptyLineBeforeCase);
+
+          // Add the error to the file
+          CBoFileAddError(
+            that,
+            error);
+
+        }
+
+      }
+
+      // Move to the next line
+      ++iLine;
+
+    } while (GSetIterStep(&iter));
+
+    // Update and display the ProgBar
+    ProgBarTxtSet(
+      &progBar,
+      1.0);
+    fprintf(
+      cbo->stream,
+      "CheckEmptyLineBeforeCase %s",
+      ProgBarTxtGet(&progBar));
+    if (success == true) {
+
+      fprintf(
+        cbo->stream,
+        " OK");
+
+    }
+
+    fprintf(
+      cbo->stream,
+      "\n");
+    fflush(cbo->stream);
+
+  }
+
+  // Return the successfull code
+  return success;
+
+}
+
 // Check there is no several arguments on one line of the
 // CBoFile 'that' with the CBo 'cbo'
 // Return true if there was no problem, else false
@@ -4634,12 +4794,15 @@ unsigned int CBoLineGetPosCloseCharFrom(
     case '{':
       closeChar = '}';
       break;
+
     case '(':
       closeChar = ')';
       break;
+
     case '[':
       closeChar = ']';
       break;
+
     default:
       break;
 
@@ -4745,12 +4908,15 @@ unsigned int CBoLineGetPosOpenCharFrom(
     case '}':
       openChar = '{';
       break;
+
     case ')':
       openChar = '(';
       break;
+
     case ']':
       openChar = '[';
       break;
+
     default:
       break;
 
