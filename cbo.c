@@ -73,6 +73,7 @@ typedef enum CBoErrorType {
   CBoErrorType_IndentLevel,
   CBoErrorType_SeveralArgOnOneLine,
   CBoErrorType_ArgumentsUnaligned,
+  CBoErrorType_IndentTab,
 
 } CBoErrorType;
 
@@ -124,6 +125,7 @@ const char* cboErrorTypeStr[] = {
   "Indent level is incorrect",
   "Several arguments on the same line",
   "Arguments of the function are not correctly aligned",
+  "Don't use tab to indent lines",
 
 };
 
@@ -302,6 +304,13 @@ bool CBoFileCheckIndentLevel(
 // CBoFile 'that' with the CBo 'cbo'
 // Return true if there was no problem, else false
 bool CBoFileCheckSeveralArgOnOneLine(
+  CBoFile* const that,
+      CBo* const cbo);
+
+// Check tab are not used to indent lines of the
+// CBoFile 'that' with the CBo 'cbo'
+// Return true if there was no problem, else false
+bool CBoFileCheckTabIndent(
   CBoFile* const that,
       CBo* const cbo);
 
@@ -1489,6 +1498,10 @@ bool CBoFileCheck(
         cbo);
     success &=
       CBoFileCheckTrailingSpace(
+        that,
+        cbo);
+    success &=
+      CBoFileCheckTabIndent(
         that,
         cbo);
     success &=
@@ -3819,6 +3832,132 @@ bool CBoFileCheckIndentLevel(
     fprintf(
       cbo->stream,
       "CheckIndentLevel %s",
+      ProgBarTxtGet(&progBar));
+    if (success == true) {
+
+      fprintf(
+        cbo->stream,
+        " OK");
+
+    }
+
+    fprintf(
+      cbo->stream,
+      "\n");
+    fflush(cbo->stream);
+
+  }
+
+  // Return the successfull code
+  return success;
+
+}
+
+// Check tab are not used to indent lines of the
+// CBoFile 'that' with the CBo 'cbo'
+// Return true if there was no problem, else false
+bool CBoFileCheckTabIndent(
+  CBoFile* const that,
+      CBo* const cbo) {
+
+#if BUILDMODE == 0
+  if (that == NULL) {
+
+    CBoErr->_type = PBErrTypeNullPointer;
+    sprintf(
+      CBoErr->_msg,
+      "'that' is null");
+    PBErrCatch(CBoErr);
+
+  }
+
+  if (cbo == NULL) {
+
+    CBoErr->_type = PBErrTypeNullPointer;
+    sprintf(
+      CBoErr->_msg,
+      "'cbo' is null");
+    PBErrCatch(CBoErr);
+
+  }
+
+#endif
+
+  // Declare a variable to memorize the success
+  bool success = true;
+
+  // Create a progress bar
+  ProgBarTxt progBar = ProgBarTxtCreateStatic();
+
+  // If the file is not empty
+  if (GSetNbElem(&(that->lines)) > 0) {
+
+    // Declare an iterator on the lines
+    GSetIterForward iter =
+      GSetIterForwardCreateStatic(&(that->lines));
+
+    // Loop on the lines
+    unsigned int iLine = 0;
+    do {
+
+      // Update and display the ProgBar
+      ProgBarTxtSet(
+        &progBar,
+        (float)iLine / (float)GSetNbElem(&(that->lines)));
+      fprintf(
+        cbo->stream,
+        "CheckTabIndent %s\r",
+        ProgBarTxtGet(&progBar));
+      fflush(cbo->stream);
+
+      // Get the line
+      CBoLine* line = GSetIterGet(&iter);
+
+      // Get the position of the head of the line
+      unsigned int posHead = CBoLineGetPosHead(line);
+
+      // Search for tab in the indentation
+      char tmp = line->str[posHead];
+      line->str[posHead] = '\0';
+      char* posTab =
+        strchr(
+          line->str,
+          '\t');
+      line->str[posHead] = tmp;
+
+      // If there are tabs in the indentation
+      if (posTab != NULL) {
+
+        // Update the success flag
+        success = false;
+
+        // Create the error
+        CBoError* error =
+          CBoErrorCreate(
+            that,
+            line,
+            iLine + 1,
+            CBoErrorType_IndentTab);
+
+        // Add the error to the file
+        CBoFileAddError(
+          that,
+          error);
+
+      }
+
+      // Move to the next line
+      ++iLine;
+
+    } while (GSetIterStep(&iter));
+
+    // Update and display the ProgBar
+    ProgBarTxtSet(
+      &progBar,
+      1.0);
+    fprintf(
+      cbo->stream,
+      "CheckTabIndent %s",
       ProgBarTxtGet(&progBar));
     if (success == true) {
 
