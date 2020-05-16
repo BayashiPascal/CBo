@@ -1,0 +1,121 @@
+\section*{Introduction}
+
+CBo is a C executable to check code formatting.\\
+
+It is intended to work on various languages but is currently implemented only for C. The rules it inforces are personally defined and its use is currently purely personal.\\
+
+It uses the \begin{ttfamily}PBErr\end{ttfamily}, \begin{ttfamily}GSet\end{ttfamily}, \begin{ttfamily}ResPublish\end{ttfamily} and \begin{ttfamily}PBCExtension\end{ttfamily} libraries.\\
+
+\section{Interface}
+
+\begin{scriptsize}
+\begin{ttfamily}
+\begin{lstlisting}
+cbo
+[-help] : print the help message
+[-listFile] : print only the list of file(s) with error(s)
+\end{lstlisting}
+\end{ttfamily}
+\end{scriptsize}
+
+CBo must be used after the commpilation phase. It works on the assumption that the code is correct, i.e. it compiles with no error.\\
+
+\section{Rules}
+
+\subsection{C language}
+
+\subsubsection{LineLength}
+
+Rule:
+\emph{Lines must be less than or equal to 79 characters long.}
+
+\subsubsection{TrailingSpace}
+
+Rule:
+\emph{There must be no spaces or tabs at the end of the lines.}
+
+\subsubsection{EmptyLineBeforeClosingCurlyBrace}
+
+Rule:
+\emph{There must be an empty line before a line continaing a closing curly brace.}
+
+\subsubsection{EmptyLineAfterOpeningCurlyBrace}
+
+Rule:
+\emph{There must be an empty line after a line containing an opening curly brace.}
+
+\subsubsection{EmptyLineAfterClosingCurlyBrace}
+
+Rule:
+\emph{There must be an empty line after a line containing a closing curly brace.}
+
+\subsubsection{SpaceAroundComma}
+
+Rule:
+\emph{There must be a space after a comma but not before.}
+
+\subsubsection{SpaceAroundSemicolon}
+
+Rule:
+\emph{There must be no space before a semicolon.}
+
+\subsubsection{SpaceAroundOperator}
+
+Rule:
+\emph{There must be a space around the operators + - / \textbar .}
+
+\subsubsection{SeveralBlankLine}
+
+Rule:
+\emph{There must be no several successive blank lines.}
+
+\subsubsection{NoCurlyBraceAtHead}
+
+Rule:
+\emph{There must be no line starting with an opening curly brace if its closing curly brace is not on the same line.}
+
+\subsubsection{NoCurlyBraceAtTail}
+
+Rule:
+\emph{A closing curly brace must be alone on its line except if its opening curly brace is on the same line.}
+
+\subsubsection{CharBeforeDot}
+
+Rule:
+\emph{A dot must be surrounded by [a-zA-Z0-9] or be at the head of a line.}
+
+\subsubsection{SpaceBeforeOpeningCurlyBrace}
+
+Rule:
+\emph{There must be a space or an opening curly brace before an opening curly brace.}
+
+\subsubsection{EmptyLineBeforeComment}
+
+Rule:
+\emph{There must be an empty line before a comment line.}
+
+\subsubsection{IndentLevel}
+
+Rule:
+\emph{Blocks must be indented with an indentation level of 2 spaces.}
+
+\subsubsection{SeveralArgOnOneLine}
+
+Rule:
+\emph{There must be no several arguments on the same line when doing function call.}
+
+\subsubsection{ArgumentsUnaligned}
+
+Rule:
+\emph{Arguments of functions must be aligned on the first character of their variable name.}
+
+\subsubsection{IndentTab}
+
+Rule:
+\emph{Blocks must be indented with spaces.}
+
+\subsubsection{EmptyLineBeforeCase}
+
+Rule:
+\emph{There must be an empty line before 'case' and 'default' in 'switch' blocks.}
+

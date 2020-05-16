@@ -1704,7 +1704,7 @@ bool CBoFileCheckLineLength(
 
 }
 
-// Check theere is no trailing spaces on the lines of the CBoFile 'that'
+// Check there is no trailing spaces on the lines of the CBoFile 'that'
 // with the CBo 'cbo'
 // Return true if there was no problem, else false
 bool CBoFileCheckTrailingSpace(
