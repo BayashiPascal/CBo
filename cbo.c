@@ -4078,11 +4078,16 @@ bool CBoFileCheckEmptyLineBeforeCase(
         }
 
         bool startsWithCase = (posCase == nextLine->str + posHead);
+        bool isPrecompilerCmd =
+          CBoFileIsLinePrecompilCmd(
+            that,
+            iLine);
 
         // If the next line starts with 'case ' and the current line
-        // is nor a blank line nor a comment
+        // is nor a blank line nor a comment nor a precompiled command
         if (
           CBoLineIsComment(line) == false &&
+          isPrecompilerCmd == false &&
           line->str[0] != '\0' &&
           startsWithCase == true) {
 
@@ -4636,7 +4641,7 @@ bool CBoLineIsComment(const CBoLine* const that) {
 }
 
 // Function to check if a line is a precompilation command
-// Return true if it's a comment, else false
+// Return true if it's one, else false
 bool CBoFileIsLinePrecompilCmd(
   const CBoFile* const that,
     const unsigned int iLine) {
@@ -4679,16 +4684,15 @@ bool CBoFileIsLinePrecompilCmd(
         GSetGet(
           &(that->lines),
           iLine - 1);
-      unsigned int posLast = CBoLineGetLength(prevLine) - 1;
-      bool prevLineIsComment =
-        CBoFileIsLinePrecompilCmd(
-          that,
-          iLine - 1);
+      unsigned int length = CBoLineGetLength(prevLine);
       if (
-        prevLineIsComment == true &&
-        prevLine->str[posLast] == '\\') {
+        length > 0 &&
+        prevLine->str[length - 1] == '\\') {
 
-        return true;
+        return
+          CBoFileIsLinePrecompilCmd(
+            that,
+            iLine - 1);
 
       }
 
