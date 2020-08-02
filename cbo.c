@@ -120,7 +120,7 @@ const char* cboErrorTypeStr[] = {
   "Several consecutive blank lines",
   "Unbalanced curly brace at head of line",
   "Unbalanced curly brace at tail of line",
-  "'.' must be after [a-zA-Z0-9], or be at head of line",
+  "'.' must be after [a-zA-Z0-9])], or be at head of line",
   "No space before opening curly brace",
   "No empty line before comment",
   "Indent level is incorrect",
@@ -3198,7 +3198,7 @@ bool CBoFileCheckNoCurlyBraceAtTail(
 
 }
 
-// Check that '.' are surrounded by [a-zA-Z0-9] or are at head of line
+// Check that '.' are surrounded by [a-zA-Z0-9])] or are at head of line
 // on the lines of the CBoFile 'that' with the CBo 'cbo'
 // Return true if there was no problem, else false
 bool CBoFileCheckCharBeforeDot(
@@ -3309,7 +3309,9 @@ bool CBoFileCheckCharBeforeDot(
               !(line->str[iChar - 1] >= 'A' &&
               line->str[iChar - 1] <= 'Z') &&
               !(line->str[iChar - 1] >= '0' &&
-              line->str[iChar - 1] <= '9')))) {
+              line->str[iChar - 1] <= '9') &&
+              line->str[iChar - 1] != ']' &&
+              line->str[iChar - 1] != ')'))) {
 
               // Update the success flag
               success = false;
