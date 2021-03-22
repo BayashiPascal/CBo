@@ -4212,14 +4212,24 @@ bool CBoFileCheckSeveralArgOnOneLine(
       // Get the line
       CBoLine* line = GSetIterGet(&iter);
 
-      // If the line is not a comment and not a precompiler command
+      // Get the position of the start of the line
+      unsigned int posHead = CBoLineGetPosHead(line);
+      char* ptrFor =
+        strstr(
+          line->str,
+          "For");
+
+      // If the line is not a comment and not a precompiler command and
+      // doesn't start with 'For'
       bool isPrecompilCmd =
         CBoFileIsLinePrecompilCmd(
           that,
           iLine);
+
       if (
         CBoLineIsComment(line) == false &&
-        isPrecompilCmd == false) {
+        isPrecompilCmd == false &&
+        ptrFor != line->str + posHead) {
 
         // Flag to escape the strings
         bool flagQuote = false;
