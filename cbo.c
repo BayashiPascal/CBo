@@ -1887,17 +1887,24 @@ bool CBoFileCheckEmptyLineBeforeClosingCurlyBrace(
       // Get the length of the line
       unsigned int length = CBoLineGetLength(line);
 
+      // Get the length of the previous line
+      unsigned int lengthPrevLine = 0;
+      if (prevLine != NULL)
+        lengthPrevLine = CBoLineGetLength(prevLine);
+
       // Get the position of the head of line and previous line
       unsigned int posHead = CBoLineGetPosHead(line);
 
       // If the line is not empty and starts with a closing curly
-      // brace and the previous line is not empty and not a comment
+      // brace and the previous line is not empty and not a comment and
+      // not terminating by antislash
       if (
         length > 0 &&
         prevLine != NULL &&
         CBoLineGetLength(prevLine) != 0 &&
         CBoLineIsComment(prevLine) == false &&
-        line->str[posHead] == '}') {
+        line->str[posHead] == '}' &&
+        (prevLine == NULL || prevLine->str[lengthPrevLine- 1] != '\\')) {
 
         // Update the success flag
         success = false;
