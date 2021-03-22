@@ -997,6 +997,9 @@ void CBoFileUpdateIndentLvlLines(CBoFile* const that) {
   // Declare a variable to memorize the current indent level
   unsigned int indent = 0;
 
+  // Declare a variable to memorise the index of the current line
+  unsigned int iLine = 0;
+
   // If the file is not empty
   if (GSetNbElem(&(that->lines)) > 0) {
 
@@ -1051,8 +1054,14 @@ void CBoFileUpdateIndentLvlLines(CBoFile* const that) {
 
       }
 
-      // If the line starts with '}'
-      if (line->str[posHead] == '}') {
+      // If the line starts with '}' and is not a precompiler command
+      bool isPrecompilCmd =
+        CBoFileIsLinePrecompilCmd(
+          that,
+          iLine);
+      if (
+        line->str[posHead] == '}' &&
+        isPrecompilCmd == false) {
 
         // Decrement the indent level
         indent -= CBOLINE_INDENT_SIZE;
@@ -1062,10 +1071,12 @@ void CBoFileUpdateIndentLvlLines(CBoFile* const that) {
       // Update the indent level of the line
       line->indent = indent;
 
-      // If the line is not empty and not a comment
+      // If the line is not empty and not a comment and not a precompiler
+      // command
       if (
         length > 0 &&
-        CBoLineIsComment(line) == false) {
+        CBoLineIsComment(line) == false &&
+        isPrecompilCmd == false) {
 
         // If the line ends with '{'
         if (line->str[length - 1] == '{') {
@@ -1159,6 +1170,9 @@ void CBoFileUpdateIndentLvlLines(CBoFile* const that) {
         }
 
       }
+
+      // Increment the index of the current line
+      ++iLine;
 
     } while (GSetIterStep(&iter));
 
