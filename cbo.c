@@ -3309,14 +3309,13 @@ bool CBoFileCheckCharBeforeDot(
             // the char before the '.' is invalid
             if (
               line->str[iChar] == '.' &&
+              !(iChar > 0 && line->str[iChar - 1] == '.') &&
+              line->str[iChar + 1] != '.' &&
               (iChar == 0 ||
               (iChar != posHead &&
-              !(line->str[iChar - 1] >= 'a' &&
-              line->str[iChar - 1] <= 'z') &&
-              !(line->str[iChar - 1] >= 'A' &&
-              line->str[iChar - 1] <= 'Z') &&
-              !(line->str[iChar - 1] >= '0' &&
-              line->str[iChar - 1] <= '9') &&
+              !(line->str[iChar - 1] >= 'a' && line->str[iChar - 1] <= 'z') &&
+              !(line->str[iChar - 1] >= 'A' && line->str[iChar - 1] <= 'Z') &&
+              !(line->str[iChar - 1] >= '0' && line->str[iChar - 1] <= '9') &&
               line->str[iChar - 1] != ']' &&
               line->str[iChar - 1] != ')'))) {
 
