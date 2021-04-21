@@ -3155,7 +3155,9 @@ bool CBoFileCheckNoCurlyBraceAtTail(
           '}');
 
       // If the last closing brace is not at the head of the line
+      // and the line is not a comment
       if (
+        CBoLineIsComment(line) == false &&
         posLastCloseBrace != length &&
         posHead != posLastCloseBrace) {
 
