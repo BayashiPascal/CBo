@@ -2048,10 +2048,11 @@ bool CBoFileCheckEmptyLineAfterOpeningCurlyBrace(
       unsigned int length = CBoLineGetLength(line);
       unsigned int prevLength = CBoLineGetLength(prevLine);
 
-      // If the previous line ends with a closing curly brace
-      // and the line is not empty
+      // If the previous line is not a comment and ends with a
+      // closing curly brace and the line is not empty
       if (
         prevLength > 0 &&
+        CBoLineIsComment(prevLine) == false &&
         prevLine->str[prevLength - 1] == '{' &&
         length != 0) {
 
