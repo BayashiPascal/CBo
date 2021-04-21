@@ -3623,12 +3623,17 @@ bool CBoFileCheckEmptyLineBeforeComment(
       CBoLine* line = GSetIterGet(&iter);
 
       // If the line is a comment and the previous line is not empty and
-      // not a comment
+      // not a comment and we are not in a macro definition
+      bool isLinePrecompilCmd =
+        CBoFileIsLinePrecompilCmd(
+          that,
+          iLine);
       if (
         prevLine != NULL &&
         CBoLineGetLength(prevLine) != 0 &&
         CBoLineIsComment(prevLine) == false &&
-        CBoLineIsComment(line) == true) {
+        CBoLineIsComment(line) == true &&
+        isLinePrecompilCmd == false) {
 
         // Update the success flag
         success = false;
