@@ -4262,10 +4262,11 @@ bool CBoFileCheckMacroNameAllCapital(
       if (startsWithDefine == true) {
 
         // Loop on the macro name
-        char* ptrName = line->str + posHead + strlen("#define ");
-        while (*ptrName != ' ' && *ptrName != '(' && success == true) {
+        char* ptrName = posDefine + strlen("#define ");
+        while (*ptrName != ' ' && *ptrName != '(' &&
+          *ptrName != '\n' && success == true) {
 
-          // If the name contains 
+          // If the name contains lower letter
           if (*ptrName >= 'a' && *ptrName <= 'z') {
 
             // Update the success flag
@@ -4385,15 +4386,7 @@ bool CBoFileCheckSeveralArgOnOneLine(
       // Get the line
       CBoLine* line = GSetIterGet(&iter);
 
-      // Get the position of the start of the line
-      unsigned int posHead = CBoLineGetPosHead(line);
-      char* ptrFor =
-        strstr(
-          line->str,
-          "For");
-
-      // If the line is not a comment and not a precompiler command and
-      // doesn't start with 'For'
+      // If the line is not a comment and not a precompiler command
       bool isPrecompilCmd =
         CBoFileIsLinePrecompilCmd(
           that,
@@ -4401,16 +4394,19 @@ bool CBoFileCheckSeveralArgOnOneLine(
 
       if (
         CBoLineIsComment(line) == false &&
-        isPrecompilCmd == false &&
-        ptrFor != line->str + posHead) {
+        isPrecompilCmd == false) {
 
         // Flag to escape the strings
         bool flagQuote = false;
         bool flagDoubleQuote = false;
 
-        // Variable to memorize the level in brackets and braces
+        // Variable to memorize the level in parenthesis, brackets and braces
         unsigned int lvlBracket = 0;
         unsigned int lvlBrace = 0;
+        unsigned int lvlPar = 0;
+
+        // Flag to remember if we are in a macro argument list
+        bool macroArgument = false;
 
         // Declare a variable to memorize the position in the line
         unsigned int pos = 0;
@@ -4456,6 +4452,51 @@ bool CBoFileCheckSeveralArgOnOneLine(
               // Update the level
               --lvlBracket;
 
+            // If the character at current position is an opening
+            // parenthesis
+            } else if (line->str[pos] == '(') {
+
+              // If we are at the first level
+              if (lvlPar == 0) {
+
+                // Check if the word before is a macro name (ie, all capital
+                // letters)
+                int posBack = pos - 1;
+                bool allCapital = true;
+                while (posBack >= 0 &&
+                  allCapital == true &&
+                  line->str[posBack] != ' ' &&
+                  line->str[posBack] != '[' &&
+                  line->str[posBack] != '{') {
+
+                  if (line->str[posBack] >= 'a' && line->str[posBack] <= 'z') {
+
+                    allCapital = false;
+
+                  }
+
+                  posBack--;
+
+                }
+
+                if (allCapital == true) macroArgument = true;
+
+              }
+
+              // Update the level
+              ++lvlPar;
+
+            // Else, if the character at current position is a closing
+            // parenthesis
+            } else if (line->str[pos] == ')') {
+
+              // Update the level
+              --lvlPar;
+
+              // If we are back at the first level, reset the flag for
+              // macro arguments
+              if (lvlPar == 0) macroArgument = false;
+
             // Else, if the character at current position is an opening
             // brace
             } else if (line->str[pos] == '{') {
@@ -4472,12 +4513,14 @@ bool CBoFileCheckSeveralArgOnOneLine(
 
             // Else, if the character at current position is a comma
             // and we are outside of brackets and braces and the comma
-            // is not at the tail of the line
+            // is not at the tail of the line and we are not in a macro
+            // arguments
             } else if (
               line->str[pos] == ',' &&
               lvlBracket == 0 &&
               lvlBrace == 0 &&
-              line->str[pos + 1] != '\0') {
+              line->str[pos + 1] != '\0' &&
+              macroArgument == false) {
 
               // Update the success flag
               success = false;
