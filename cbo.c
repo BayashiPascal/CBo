@@ -75,6 +75,7 @@ typedef enum CBoErrorType {
   CBoErrorType_ArgumentsUnaligned,
   CBoErrorType_IndentTab,
   CBoErrorType_EmptyLineBeforeCase,
+  CBoErrorType_MacroNameMustBeCapital,
 
 } CBoErrorType;
 
@@ -128,6 +129,7 @@ const char* cboErrorTypeStr[] = {
   "Arguments of the function are not correctly aligned",
   "Don't use tab to indent lines",
   "No empty line or comment before case",
+  "Macro name must be in capital letters"
 
 };
 
@@ -320,6 +322,13 @@ bool CBoFileCheckTabIndent(
 // CBoFile 'that' with the CBo 'cbo'
 // Return true if there was no problem, else false
 bool CBoFileCheckEmptyLineBeforeCase(
+  CBoFile* const that,
+      CBo* const cbo);
+
+// Check that macro names are all capital in lines of the  CBoFile 'that'
+// with the CBo 'cbo'
+// Return true if there was no problem, else false
+bool CBoFileCheckMacroNameAllCapital(
   CBoFile* const that,
       CBo* const cbo);
 
@@ -1525,6 +1534,10 @@ bool CBoFileCheck(
         cbo);
     success &=
       CBoFileCheckTabIndent(
+        that,
+        cbo);
+    success &=
+      CBoFileCheckMacroNameAllCapital(
         that,
         cbo);
     success &=
@@ -4153,6 +4166,144 @@ bool CBoFileCheckEmptyLineBeforeCase(
     fprintf(
       cbo->stream,
       "CheckEmptyLineBeforeCase %s",
+      ProgBarTxtGet(&progBar));
+    if (success == true) {
+
+      fprintf(
+        cbo->stream,
+        " OK");
+
+    }
+
+    fprintf(
+      cbo->stream,
+      "\n");
+    fflush(cbo->stream);
+
+  }
+
+  // Return the successfull code
+  return success;
+
+}
+
+// Check that macro names are all capital in lines of the  CBoFile 'that'
+// with the CBo 'cbo'
+// Return true if there was no problem, else false
+bool CBoFileCheckMacroNameAllCapital(
+  CBoFile* const that,
+      CBo* const cbo) {
+
+#if BUILDMODE == 0
+  if (that == NULL) {
+
+    CBoErr->_type = PBErrTypeNullPointer;
+    sprintf(
+      CBoErr->_msg,
+      "'that' is null");
+    PBErrCatch(CBoErr);
+
+  }
+
+  if (cbo == NULL) {
+
+    CBoErr->_type = PBErrTypeNullPointer;
+    sprintf(
+      CBoErr->_msg,
+      "'cbo' is null");
+    PBErrCatch(CBoErr);
+
+  }
+
+#endif
+
+  // Declare a variable to memorize the success
+  bool success = true;
+
+  // Create a progress bar
+  ProgBarTxt progBar = ProgBarTxtCreateStatic();
+
+  // If the file is not empty
+  if (GSetNbElem(&(that->lines)) > 0) {
+
+    // Declare an iterator on the lines
+    GSetIterForward iter =
+      GSetIterForwardCreateStatic(&(that->lines));
+
+    // Loop on the lines
+    unsigned int iLine = 0;
+    do {
+
+      // Update and display the ProgBar
+      ProgBarTxtSet(
+        &progBar,
+        (float)iLine / (float)GSetNbElem(&(that->lines)));
+      fprintf(
+        cbo->stream,
+        "CheckMacroNameAllCapital %s\r",
+        ProgBarTxtGet(&progBar));
+      fflush(cbo->stream);
+
+      // Get the line
+      CBoLine* line = GSetIterGet(&iter);
+
+      // Get the position of the head of thet line
+      unsigned int posHead = CBoLineGetPosHead(line);
+
+      // Check if the next line starts with '#define '
+      char *posDefine =
+        strstr(
+          line->str + posHead,
+          "#define ");
+
+      bool startsWithDefine = (posDefine == line->str + posHead);
+
+      // If the line starts with '#define'
+      if (startsWithDefine == true) {
+
+        // Loop on the macro name
+        char* ptrName = line->str + posHead + strlen("#define ");
+        while (*ptrName != ' ' && *ptrName != '(' && success == true) {
+
+          // If the name contains 
+          if (*ptrName >= 'a' && *ptrName <= 'z') {
+
+            // Update the success flag
+            success = false;
+
+            // Create the error
+            CBoError* error =
+              CBoErrorCreate(
+                that,
+                line,
+                iLine + 1,
+                CBoErrorType_MacroNameMustBeCapital);
+
+            // Add the error to the file
+            CBoFileAddError(
+              that,
+              error);
+
+          }
+
+          ptrName++;
+
+        }
+
+      }
+
+      // Move to the next line
+      ++iLine;
+
+    } while (GSetIterStep(&iter));
+
+    // Update and display the ProgBar
+    ProgBarTxtSet(
+      &progBar,
+      1.0);
+    fprintf(
+      cbo->stream,
+      "CheckMacroNameAllCapital %s",
       ProgBarTxtGet(&progBar));
     if (success == true) {
 
