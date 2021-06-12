@@ -4264,7 +4264,7 @@ bool CBoFileCheckMacroNameAllCapital(
         // Loop on the macro name
         char* ptrName = posDefine + strlen("#define ");
         while (*ptrName != ' ' && *ptrName != '(' &&
-          *ptrName != '\n' && success == true) {
+          *ptrName != '\0' && success == true) {
 
           // If the name contains lower letter
           if (*ptrName >= 'a' && *ptrName <= 'z') {
