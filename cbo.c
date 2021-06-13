@@ -76,6 +76,7 @@ typedef enum CBoErrorType {
   CBoErrorType_IndentTab,
   CBoErrorType_EmptyLineBeforeCase,
   CBoErrorType_MacroNameMustBeCapital,
+  CBoErrorType_LineContinuationMarksMustBeAligned,
 
 } CBoErrorType;
 
@@ -129,7 +130,8 @@ const char* cboErrorTypeStr[] = {
   "Arguments of the function are not correctly aligned",
   "Don't use tab to indent lines",
   "No empty line or comment before case",
-  "Macro name must be in capital letters"
+  "Macro name must be in capital letters",
+  "Line continuation marks on successive lines must be aligned",
 
 };
 
@@ -210,6 +212,13 @@ bool CBoFileCheckLineLength(
 // with the CBo 'cbo'
 // Return true if there was no problem, else false
 bool CBoFileCheckTrailingSpace(
+  CBoFile* const that,
+      CBo* const cbo);
+
+// Check if the continuation mark are aligned on the lines of the CBoFile
+// 'that' with the CBo 'cbo'
+// Return true if there was no problem, else false
+bool CBoFileCheckContinuationMark(
   CBoFile* const that,
       CBo* const cbo);
 
@@ -1533,6 +1542,10 @@ bool CBoFileCheck(
         that,
         cbo);
     success &=
+      CBoFileCheckContinuationMark(
+        that,
+        cbo);
+    success &=
       CBoFileCheckTabIndent(
         that,
         cbo);
@@ -1823,6 +1836,140 @@ bool CBoFileCheckTrailingSpace(
     fprintf(
       cbo->stream,
       "CheckTrailingSpace %s",
+      ProgBarTxtGet(&progBar));
+    if (success == true) {
+
+      fprintf(
+        cbo->stream,
+        " OK");
+
+    }
+
+    fprintf(
+      cbo->stream,
+      "\n");
+    fflush(cbo->stream);
+
+  }
+
+  // Return the successfull code
+  return success;
+
+}
+
+// Check if the continuation mark are aligned on the lines of the CBoFile
+// 'that' with the CBo 'cbo'
+// Return true if there was no problem, else false
+bool CBoFileCheckContinuationMark(
+  CBoFile* const that,
+      CBo* const cbo) {
+
+#if BUILDMODE == 0
+  if (that == NULL) {
+
+    CBoErr->_type = PBErrTypeNullPointer;
+    sprintf(
+      CBoErr->_msg,
+      "'that' is null");
+    PBErrCatch(CBoErr);
+
+  }
+
+  if (cbo == NULL) {
+
+    CBoErr->_type = PBErrTypeNullPointer;
+    sprintf(
+      CBoErr->_msg,
+      "'cbo' is null");
+    PBErrCatch(CBoErr);
+
+  }
+
+#endif
+
+  // Declare a variable to memorize the success
+  bool success = true;
+
+  // Create a progress bar
+  ProgBarTxt progBar = ProgBarTxtCreateStatic();
+
+  // If the file is not empty
+  if (GSetNbElem(&(that->lines)) > 0) {
+
+    // Previous line
+    CBoLine* prevLine = NULL;
+
+    // Loop on the lines
+    GSetIterForward iter =
+      GSetIterForwardCreateStatic(&(that->lines));
+    unsigned int iLine = 0;
+    do {
+
+      // Update and display the ProgBar
+      ProgBarTxtSet(
+        &progBar,
+        (float)iLine / (float)GSetNbElem(&(that->lines)));
+      fprintf(
+        cbo->stream,
+        "CheckContinuationMark %s\r",
+        ProgBarTxtGet(&progBar));
+      fflush(cbo->stream);
+
+      // Get the line
+      CBoLine* line = GSetIterGet(&iter);
+
+      // Get the length of the line
+      unsigned int length = CBoLineGetLength(line);
+
+      // If the last char of the line is a continuation mark and there is
+      // a previous line
+      if (
+        length > 0 &&
+        line->str[length - 1] == '\\' &&
+        prevLine != NULL) {
+
+        // Get the length of the previous line
+        unsigned int lengthPrev = CBoLineGetLength(prevLine);
+
+        // If the last char of the previous line is a continuation mark and
+        // it's not at the same position
+        if (
+          lengthPrev > 0 &&
+          prevLine->str[lengthPrev - 1] == '\\' &&
+          length != lengthPrev) {
+
+          // Update the success flag
+          success = false;
+
+          // Create the error
+          CBoError* error =
+            CBoErrorCreate(
+              that,
+              line,
+              iLine + 1,
+              CBoErrorType_LineContinuationMarksMustBeAligned);
+
+          // Add the error to the file
+          CBoFileAddError(
+            that,
+            error);
+
+        }
+
+      }
+
+      ++iLine;
+      prevLine = line;
+
+    } while (GSetIterStep(&iter));
+
+    // Update and display the ProgBar
+    ProgBarTxtSet(
+      &progBar,
+      1.0);
+    fprintf(
+      cbo->stream,
+      "CheckContinuationMark %s",
       ProgBarTxtGet(&progBar));
     if (success == true) {
 
