@@ -1537,10 +1537,6 @@ bool CBoFileCheck(
         that,
         cbo);
     success &=
-      CBoFileCheckMacroNameAllCapital(
-        that,
-        cbo);
-    success &=
       CBoFileCheckEmptyLineBeforeClosingCurlyBrace(
         that,
         cbo);
